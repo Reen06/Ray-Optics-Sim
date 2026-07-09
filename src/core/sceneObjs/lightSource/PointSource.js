@@ -35,6 +35,20 @@ import { toPhysicalPower, fromPhysicalPower, hasUnits, powerUnit } from '../../u
 class PointSource extends BaseSceneObj {
   static type = 'PointSource';
   static isOptical = true;
+  /**
+   * Sample rays emitted per unit `rayDensity` for a full 360° turn. This is
+   * a rendering resolution constant, not a physical property -- but because
+   * each ray's weight is `brightness / rayDensity` while the ray COUNT
+   * scales as `rayDensity * RAYS_PER_TURN`, the total brightness summed
+   * over all emitted rays works out to `RAYS_PER_TURN * brightness`
+   * (independent of rayDensity, by design, so resolution doesn't change
+   * total output) -- which means the stored `brightness` property is
+   * `RAYS_PER_TURN` times smaller than the true total radiated power.
+   * `populateObjBar` corrects for this so a value typed in real power units
+   * (e.g. from an LED datasheet) matches what a detector capturing the
+   * full 360° emission actually reads back.
+   */
+  static RAYS_PER_TURN = 500;
   static serializableDefaults = {
     x: null,
     y: null,
@@ -62,8 +76,15 @@ class PointSource extends BaseSceneObj {
     }
     objBar.setTitle(i18next.t('main:tools.PointSource.title') + ' (360\u00B0)');
     const brightnessLabel = i18next.t('simulator:sceneObjs.common.brightness') + (hasUnits(this.scene) ? ` (${powerUnit(this.scene)})` : '');
-    objBar.createNumber(brightnessLabel, toPhysicalPower(this.scene, 0.01), toPhysicalPower(this.scene, 100000), toPhysicalPower(this.scene, 0.01), toPhysicalPower(this.scene, this.brightness), function (obj, value) {
-      obj.brightness = fromPhysicalPower(obj.scene, value);
+    // Only correct for RAYS_PER_TURN when real units are configured, so
+    // legacy/unitless scenes keep the exact pre-existing raw brightness
+    // dial behavior (a relative 0.01-1 slider, not a claim of physical
+    // power) -- the correction only matters once a user is relying on the
+    // typed value being real radiated power.
+    const turnFactor = hasUnits(this.scene) ? PointSource.RAYS_PER_TURN : 1;
+    objBar.createNumber(brightnessLabel, toPhysicalPower(this.scene, 0.01), toPhysicalPower(this.scene, 100000), toPhysicalPower(this.scene, 0.01), toPhysicalPower(this.scene, this.brightness * turnFactor), function (obj, value) {
+      const f = hasUnits(obj.scene) ? PointSource.RAYS_PER_TURN : 1;
+      obj.brightness = fromPhysicalPower(obj.scene, value) / f;
     }, brightnessInfo);
     if (this.scene.simulateColors) {
       objBar.createNumber(i18next.t('simulator:sceneObjs.common.wavelength') + ' (nm)', Simulator.UV_WAVELENGTH, Simulator.INFRARED_WAVELENGTH, 1, this.wavelength, function (obj, value) {
@@ -165,12 +186,12 @@ class PointSource extends BaseSceneObj {
 
       if (this.scene.colorMode !== 'default' && expectBrightness > 1) {
         // In the new color modes, the brightness scale is always kept to 1 for consistent detector readings, so the ray density is overriden to keep the brightness scale to 1. Currently the strategy is to increase the number of angled rays until the brightness is less than 1. This may be improved in the future.
-        rayDensity += 1/500;
+        rayDensity += 1/PointSource.RAYS_PER_TURN;
       }
     } while (this.scene.colorMode !== 'default' && expectBrightness > 1);
 
     let newRays = [];
-    var s = Math.PI * 2 / parseInt(rayDensity * 500);
+    var s = Math.PI * 2 / parseInt(rayDensity * PointSource.RAYS_PER_TURN);
     var i0 = (this.scene.mode == 'observer') ? (-s * 2 + 1e-6) : 0;
     for (var i = i0; i < (Math.PI * 2 - 1e-5); i = i + s) {
       var ray1 = geometry.line(geometry.point(this.x, this.y), geometry.point(this.x + Math.sin(i), this.y + Math.cos(i)));

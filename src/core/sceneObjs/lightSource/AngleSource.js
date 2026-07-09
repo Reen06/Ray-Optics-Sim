@@ -38,6 +38,8 @@ import { toPhysicalPower, fromPhysicalPower, hasUnits, powerUnit } from '../../u
 class AngleSource extends LineObjMixin(BaseSceneObj) {
   static type = 'AngleSource';
   static isOptical = true;
+  /** See PointSource.RAYS_PER_TURN -- same ray-count/brightness-per-ray formula (over `emisAngle` instead of the full turn), so the same correction applies. */
+  static RAYS_PER_TURN = 500;
   static serializableDefaults = {
     p1: null,
     p2: null,
@@ -70,8 +72,12 @@ class AngleSource extends LineObjMixin(BaseSceneObj) {
     }
     objBar.setTitle(i18next.t('main:tools.PointSource.title') + ' (<360\u00B0)');
     const brightnessLabel = i18next.t('simulator:sceneObjs.common.brightness') + (hasUnits(this.scene) ? ` (${powerUnit(this.scene)})` : '');
-    objBar.createNumber(brightnessLabel, toPhysicalPower(this.scene, 0.01), toPhysicalPower(this.scene, 100000), toPhysicalPower(this.scene, 0.01), toPhysicalPower(this.scene, this.brightness), function (obj, value) {
-      obj.brightness = fromPhysicalPower(obj.scene, value);
+    // See PointSource.populateObjBar: only correct for RAYS_PER_TURN when
+    // real units are configured, so legacy/unitless scenes are unaffected.
+    const turnFactor = hasUnits(this.scene) ? AngleSource.RAYS_PER_TURN : 1;
+    objBar.createNumber(brightnessLabel, toPhysicalPower(this.scene, 0.01), toPhysicalPower(this.scene, 100000), toPhysicalPower(this.scene, 0.01), toPhysicalPower(this.scene, this.brightness * turnFactor), function (obj, value) {
+      const f = hasUnits(obj.scene) ? AngleSource.RAYS_PER_TURN : 1;
+      obj.brightness = fromPhysicalPower(obj.scene, value) / f;
     }, brightnessInfo);
     if (this.scene.simulateColors) {
       objBar.createNumber(i18next.t('simulator:sceneObjs.common.wavelength') + ' (nm)', Simulator.UV_WAVELENGTH, Simulator.INFRARED_WAVELENGTH, 1, this.wavelength, function (obj, value) {
@@ -119,11 +125,11 @@ class AngleSource extends LineObjMixin(BaseSceneObj) {
 
       if (this.scene.colorMode !== 'default' && expectBrightness > 1) {
         // In the new color modes, the brightness scale is always kept to 1 for consistent detector readings, so the ray density is overriden to keep the brightness scale to 1. Currently the strategy is to increase the number of angled rays until the brightness is less than 1. This may be improved in the future.
-        rayDensity += 1/500;
+        rayDensity += 1/AngleSource.RAYS_PER_TURN;
       }
     } while (this.scene.colorMode !== 'default' && expectBrightness > 1);
 
-    var s = Math.PI * 2 / parseInt(rayDensity * 500);
+    var s = Math.PI * 2 / parseInt(rayDensity * AngleSource.RAYS_PER_TURN);
     var i0 = (this.scene.mode == 'observer') ? (-s * 2 + 1e-6) : 0;
 
     var ang, x1, y1, iStart, iEnd;
