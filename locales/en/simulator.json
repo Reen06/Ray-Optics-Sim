@@ -58,7 +58,9 @@
     },
     "brightnessGain": {
       "title": "Brightness Gain",
-      "description": "A viewing exposure control, like a camera's gain: scales how bright rays are drawn on screen only. It never changes the actual brightness/power values on light sources, so detector, power meter, and image sensor readings are unaffected -- use it to bring a scene calibrated to real physical units (e.g. a 20 mW LED) into a comfortable viewing brightness without changing the physics."
+      "description": "A viewing exposure control, like a camera's gain: scales how bright rays are drawn on screen only. It never changes the actual brightness/power values on light sources, so detector, power meter, and image sensor readings are unaffected -- use it to bring a scene calibrated to real physical units (e.g. a 20 mW LED) into a comfortable viewing brightness without changing the physics.",
+      "autoFit": "Auto Fit",
+      "autoFitInfo": "Set the gain so the brightest ray currently on screen becomes a comfortable, clearly visible brightness -- an auto-exposure for scenes whose real physical power values happen to be very dim or very bright at a literal 1:1 mapping."
     },
     "layoutAids": {
       "title": "Layout Aids",

@@ -43,6 +43,9 @@
             <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
           </svg>
         </button>
+        <button class="btn shadow-none auto-fit-btn" id="brightnessGainAutoFit" :title="$t('simulator:settings.brightnessGain.autoFitInfo')" @click="(e) => { autoFit(); e.target.blur(); }">
+          {{ $t('simulator:settings.brightnessGain.autoFit') }}
+        </button>
       </div>
     </div>
     <div class="row justify-content-center title">{{ $t('simulator:settings.brightnessGain.title') }}</div>
@@ -76,6 +79,9 @@
           <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
         </svg>
       </button>
+      <button class="btn shadow-none auto-fit-btn" id="brightnessGainAutoFit_more" :title="$t('simulator:settings.brightnessGain.autoFitInfo')" @click="(e) => { autoFit(); e.target.blur(); }">
+        {{ $t('simulator:settings.brightnessGain.autoFit') }}
+      </button>
     </div>
     <hr class="dropdown-divider">
   </div>
@@ -100,6 +106,9 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus" viewBox="0 0 16 16">
           <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
         </svg>
+      </button>
+      <button class="btn auto-fit-btn" id="brightnessGainAutoFit_mobile" :title="$t('simulator:settings.brightnessGain.autoFitInfo')" @click="(e) => { autoFit(); e.target.blur(); }">
+        {{ $t('simulator:settings.brightnessGain.autoFit') }}
       </button>
     </div>
   </div>
@@ -127,6 +136,11 @@ import { vTooltipPopover } from '../../directives/tooltip-popover'
 import { usePreferencesStore } from '../../store/preferences'
 import { useSceneStore } from '../../store/scene'
 import { computed, toRef } from 'vue'
+import { app } from '../../services/app.js'
+import { computeState } from '../../services/compute.js'
+
+/** Target alpha for the brightest ray after "Auto Fit" -- comfortably visible without fully saturating (leaves room to still see relative brightness between rays). */
+const AUTO_FIT_TARGET_ALPHA = 0.9
 
 export default {
   name: 'BrightnessGainBar',
@@ -158,11 +172,27 @@ export default {
       brightnessGain.value = brightnessGain.value - 0.1
     }
 
+    // Takes the brightest ray currently on screen (tracked gain-independently
+    // in Simulator.maxRayBrightness, live preview, or the last/current
+    // Compute run's equivalent) and picks the gain that brings it to a
+    // comfortable, visible-but-not-fully-saturated value -- an "auto
+    // exposure" for scenes calibrated to real physical power values that
+    // happen to be very dim or very bright at a literal 1:1 mapping.
+    const autoFit = () => {
+      const maxB = computeState.state === 'live'
+        ? (app.simulator?.maxRayBrightness || 0)
+        : (computeState.maxRayBrightness || 0)
+      if (maxB > 0 && isFinite(maxB)) {
+        brightnessGainModel.value = AUTO_FIT_TARGET_ALPHA / maxB
+      }
+    }
+
     return {
       tooltipType,
       brightnessGain,
       increaseGain,
-      decreaseGain
+      decreaseGain,
+      autoFit
     }
   }
 }
@@ -192,4 +222,10 @@ export default {
   background-color: rgba(128,128,128,0.5);
 }
 
+.auto-fit-btn {
+  font-size: 8.5pt;
+  padding: 2px 6px;
+  margin-left: 4px;
+  white-space: nowrap;
+}
 </style>

@@ -82,6 +82,8 @@ export const computeState = reactive({
   reachedLimit: false,
   /** True while the "taking longer than normal, keep going?" prompt should show. */
   takingLong: false,
+  /** Brightest ray drawn so far in the current/last run, before gain -- see BrightnessGainBar.vue's "Auto Fit". */
+  maxRayBrightness: 0,
   error: null,
   warning: null,
 });
@@ -276,6 +278,7 @@ function onWorkerMessage(event) {
     computeState.processedRayCount = msg.processedRayCount;
     computeState.elapsed = msg.elapsed;
     computeState.progress = Math.min(1, msg.processedRayCount / msg.rayCountLimit);
+    computeState.maxRayBrightness = msg.maxRayBrightness;
     applyDetectorData(msg);
     emitStatus(msg, true);
     armWatchdog();
@@ -302,6 +305,7 @@ function onWorkerMessage(event) {
     computeState.progress = 1;
     computeState.processedRayCount = msg.processedRayCount;
     computeState.elapsed = msg.elapsed;
+    computeState.maxRayBrightness = msg.maxRayBrightness;
     computeState.reachedLimit = msg.reachedLimit;
     computeState.error = msg.error;
     computeState.warning = msg.warning;
@@ -381,6 +385,7 @@ export function startCompute(detail) {
   computeState.detailMultiplier = multiplier;
   computeState.reachedLimit = false;
   computeState.takingLong = false;
+  computeState.maxRayBrightness = 0;
   computeState.error = null;
   computeState.warning = null;
   armWatchdog();

@@ -28,10 +28,10 @@
  *
  * Protocol (worker -> main):
  *   { type: 'progress', runId, processedRayCount, rayCountLimit, elapsed,
- *     totalTruncation, brightnessScale, detectors }
+ *     totalTruncation, brightnessScale, maxRayBrightness, detectors }
  *   { type: 'frame', runId, bitmap }              (bitmap is transferred)
  *   { type: 'done', runId, cancelled, reachedLimit, timedOut, processedRayCount, elapsed,
- *     totalTruncation, brightnessScale, detectors, error, warning }
+ *     totalTruncation, brightnessScale, maxRayBrightness, detectors, error, warning }
  *   { type: 'error', runId, message }
  */
 
@@ -234,6 +234,7 @@ function run(msg) {
       elapsed: simulator.simulationStartTime ? (new Date() - simulator.simulationStartTime) : 0,
       totalTruncation: simulator.totalTruncation,
       brightnessScale: simulator.brightnessScale,
+      maxRayBrightness: simulator.maxRayBrightness,
       detectors: collectDetectors(scene)
     });
   };
@@ -253,6 +254,7 @@ function run(msg) {
         elapsed: simulator.simulationStartTime ? (new Date() - simulator.simulationStartTime) : 0,
         totalTruncation: simulator.totalTruncation,
         brightnessScale: simulator.brightnessScale,
+        maxRayBrightness: simulator.maxRayBrightness,
         detectors: collectDetectors(scene),
         error: simulator.error || scene.error || (lastFrameError ? `Snapshot image failed: ${lastFrameError}` : null),
         warning: simulator.warning || scene.warning || null

@@ -150,6 +150,9 @@ class Simulator {
     /** @property {number} processedRayCount - The number of rays processed in the simulation. */
     this.processedRayCount = 0;
 
+    /** @property {number} maxRayBrightness - The brightest ray drawn so far in the current run, BEFORE the Brightness Gain multiplier (alpha0) -- used by the "Auto Fit" gain button. */
+    this.maxRayBrightness = 0;
+
     /** @property {boolean} manualLightRedraw - Whether to manually redraw the light layer. True if the user turns off "Auto refresh". */
     this.manualLightRedraw = false;
 
@@ -467,6 +470,7 @@ class Simulator {
     if (!skipLight) {
       this.pendingRays = [];
       this.processedRayCount = 0;
+      this.maxRayBrightness = 0;
     }
 
     if (!skipGrid && this.ctxGrid) {
@@ -744,10 +748,16 @@ class Simulator {
         
         // Only calculate color and alpha if we have a canvas to draw on
         if (this.canvasRendererMain) {
+          var rawBrightness = this.pendingRays[j].brightness_s + this.pendingRays[j].brightness_p;
+          // Track the brightest ray drawn this run, gain-independent (i.e.
+          // before alpha0), so "Auto Fit" (Brightness Gain control) can pick
+          // a gain that brings the CURRENT brightest ray on screen to a
+          // comfortable value, regardless of what gain is already applied.
+          if (rawBrightness > this.maxRayBrightness) this.maxRayBrightness = rawBrightness;
           if (this.scene.simulateColors) {
-            var color = this.scene.simulator.wavelengthToColor(this.pendingRays[j].wavelength, (this.pendingRays[j].brightness_s + this.pendingRays[j].brightness_p), !this.isSVG && (this.scene.colorMode == 'default'));
+            var color = this.scene.simulator.wavelengthToColor(this.pendingRays[j].wavelength, rawBrightness, !this.isSVG && (this.scene.colorMode == 'default'));
           } else {
-            var alpha = alpha0 * (this.pendingRays[j].brightness_s + this.pendingRays[j].brightness_p);
+            var alpha = alpha0 * rawBrightness;
           }
         }
         
