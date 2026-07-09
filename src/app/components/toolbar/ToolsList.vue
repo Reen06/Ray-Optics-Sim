@@ -285,6 +285,13 @@
       :layout="layout"
     />
     <ToolItem
+      id="DistanceDimension"
+      :title="$t('main:tools.DistanceDimension.title')"
+      :popoverContent="$t('main:meta.parentheses', {main: $t('main:tools.DistanceDimension.description'), sub: $t('main:tools.common.lineInstruction')})"
+      :verticalOffset="60"
+      :layout="layout"
+    />
+    <ToolItem
       id="Detector"
       :title="$t('main:tools.Detector.title')"
       :popoverContent="$t('main:meta.parentheses', {main: $t('main:tools.Detector.description'), sub: $t('main:tools.common.lineInstruction')})"

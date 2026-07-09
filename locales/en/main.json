@@ -178,6 +178,10 @@
       "title": "Protractor",
       "description": "A protractor defined from the center and another point for the zero direction. The scale is in degrees."
     },
+    "DistanceDimension": {
+      "title": "Distance Dimension",
+      "description": "A CAD-style smart dimension: click near an existing point (an endpoint of a mirror, lens, source, detector, etc.) to anchor each end, then type an exact distance to move the object at the second point until it matches. Falls back to a free point like the Ruler if a click doesn't land on an existing point."
+    },
     "Detector": {
       "title": "Detector",
       "description": "A tool for measuring the rate of energy flow (P), the rate of perpendicular momentum flow (F⊥), and the rate of parallel momentum flow (F∥) through a line segment.  The units are arbitrary."

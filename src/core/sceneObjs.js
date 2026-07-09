@@ -57,6 +57,7 @@ export const Aperture = require('./sceneObjs/blocker/Aperture.js').default;
 export const DiffractionGrating = require('./sceneObjs/blocker/DiffractionGrating.js').default;
 export const Ruler = require('./sceneObjs/other/Ruler.js').default;
 export const Protractor = require('./sceneObjs/other/Protractor.js').default;
+export const DistanceDimension = require('./sceneObjs/other/DistanceDimension.js').default;
 export const Detector = require('./sceneObjs/other/Detector.js').default;
 export const PowerMeter = require('./sceneObjs/other/PowerMeter.js').default;
 export const ImageSensor = require('./sceneObjs/other/ImageSensor.js').default;

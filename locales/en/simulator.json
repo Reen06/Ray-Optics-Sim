@@ -369,6 +369,9 @@
     "Protractor": {
       "zeroPoint": "Zero point"
     },
+    "DistanceDimension": {
+      "distanceInfo": "Type an exact distance between the two anchored points. If the second point tracks an existing object (shown as a filled dot), that whole object moves to satisfy the new distance; a free (untracked) point just moves itself."
+    },
     "Detector": {
       "info": {
         "P": "P: The rate of energy flow (flux) in B/s (see below).",
