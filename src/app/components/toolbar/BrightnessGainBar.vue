@@ -46,16 +46,6 @@
         <button class="btn shadow-none auto-fit-btn" id="brightnessGainAutoFit" :title="$t('simulator:settings.brightnessGain.autoFitInfo')" @click="(e) => { autoFit(); e.target.blur(); }">
           {{ $t('simulator:settings.brightnessGain.autoFit') }}
         </button>
-        <input
-          type="text"
-          class="auto-fit-alpha-input"
-          v-model="autoFitTargetAlphaInput"
-          :title="$t('simulator:settings.brightnessGain.autoFitAlphaInfo')"
-          @keyup.enter="commitAutoFitTargetAlpha"
-          @keydown.stop
-          @blur="commitAutoFitTargetAlpha"
-          @click="$event.target.select()"
-        >
       </div>
     </div>
     <div class="row justify-content-center title">{{ $t('simulator:settings.brightnessGain.title') }}</div>
@@ -92,16 +82,6 @@
       <button class="btn shadow-none auto-fit-btn" id="brightnessGainAutoFit_more" :title="$t('simulator:settings.brightnessGain.autoFitInfo')" @click="(e) => { autoFit(); e.target.blur(); }">
         {{ $t('simulator:settings.brightnessGain.autoFit') }}
       </button>
-      <input
-        type="text"
-        class="auto-fit-alpha-input"
-        v-model="autoFitTargetAlphaInput"
-        :title="$t('simulator:settings.brightnessGain.autoFitAlphaInfo')"
-        @keyup.enter="commitAutoFitTargetAlpha"
-        @keydown.stop
-        @blur="commitAutoFitTargetAlpha"
-        @click="$event.target.select()"
-      >
     </div>
     <hr class="dropdown-divider">
   </div>
@@ -130,16 +110,6 @@
       <button class="btn auto-fit-btn" id="brightnessGainAutoFit_mobile" :title="$t('simulator:settings.brightnessGain.autoFitInfo')" @click="(e) => { autoFit(); e.target.blur(); }">
         {{ $t('simulator:settings.brightnessGain.autoFit') }}
       </button>
-      <input
-        type="text"
-        class="auto-fit-alpha-input"
-        v-model="autoFitTargetAlphaInput"
-        :title="$t('simulator:settings.brightnessGain.autoFitAlphaInfo')"
-        @keyup.enter="commitAutoFitTargetAlpha"
-        @keydown.stop
-        @blur="commitAutoFitTargetAlpha"
-        @click="$event.target.select()"
-      >
     </div>
   </div>
   <hr v-if="layout === 'mobile'" class="dropdown-divider">
@@ -165,9 +135,19 @@
 import { vTooltipPopover } from '../../directives/tooltip-popover'
 import { usePreferencesStore } from '../../store/preferences'
 import { useSceneStore } from '../../store/scene'
-import { computed, toRef, ref, watch } from 'vue'
+import { computed, toRef } from 'vue'
 import { app } from '../../services/app.js'
 import { computeState } from '../../services/compute.js'
+
+/**
+ * Target alpha for the brightest ray after "Auto Fit". Deliberately well
+ * under fully opaque: with the additive ('lighter') blending this renderer
+ * uses, overlapping rays near a source stack brighter than a single ray's
+ * alpha alone, so a high target reads as blown-out. Not user-editable --
+ * the existing +/- gain buttons already give fine-grained control after
+ * Auto Fit lands in the right ballpark, so a separate input was redundant.
+ */
+const AUTO_FIT_TARGET_ALPHA = 0.35
 
 export default {
   name: 'BrightnessGainBar',
@@ -183,26 +163,6 @@ export default {
     const help = toRef(preferences, 'help')
     const brightnessGainModel = toRef(scene, 'brightnessGain')
     const tooltipType = computed(() => help.value ? 'popover' : null)
-
-    // Target alpha for the brightest ray after "Auto Fit", user-tunable
-    // since "comfortable" is a matter of taste (deliberately well under
-    // fully opaque by default: with the additive 'lighter' blending this
-    // renderer uses, overlapping rays near a source stack brighter than a
-    // single ray's alpha alone, so a high target reads as blown-out).
-    // Persisted preference, not a scene property -- it's a personal viewing
-    // preference, not something that should round-trip with a saved scene.
-    const autoFitTargetAlphaModel = toRef(preferences, 'autoFitTargetAlpha')
-    const autoFitTargetAlphaInput = ref(String(autoFitTargetAlphaModel.value ?? 0.35))
-    watch(autoFitTargetAlphaModel, (v) => { autoFitTargetAlphaInput.value = String(v ?? 0.35) })
-
-    const commitAutoFitTargetAlpha = () => {
-      const v = parseFloat(autoFitTargetAlphaInput.value)
-      if (isFinite(v) && v > 0 && v <= 1) {
-        autoFitTargetAlphaModel.value = v
-      } else {
-        autoFitTargetAlphaInput.value = String(autoFitTargetAlphaModel.value ?? 0.35)
-      }
-    }
 
     const brightnessGain = computed({
       get: () => Math.log(brightnessGainModel.value ?? 1),
@@ -230,7 +190,7 @@ export default {
         ? (app.simulator?.maxRayBrightness || 0)
         : (computeState.maxRayBrightness || 0)
       if (maxB > 0 && isFinite(maxB)) {
-        brightnessGainModel.value = autoFitTargetAlphaModel.value / maxB
+        brightnessGainModel.value = AUTO_FIT_TARGET_ALPHA / maxB
       }
     }
 
@@ -239,9 +199,7 @@ export default {
       brightnessGain,
       increaseGain,
       decreaseGain,
-      autoFit,
-      autoFitTargetAlphaInput,
-      commitAutoFitTargetAlpha
+      autoFit
     }
   }
 }
@@ -276,17 +234,5 @@ export default {
   padding: 2px 6px;
   margin-left: 4px;
   white-space: nowrap;
-}
-
-.auto-fit-alpha-input {
-  background-color: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
-  color: inherit;
-  width: 32px;
-  height: 20px;
-  margin-left: 4px;
-  text-align: center;
-  font-size: 8.5pt;
 }
 </style>
