@@ -292,6 +292,13 @@
       :verticalOffset="60"
       :layout="layout"
     />
+    <ToolItem
+      id="PowerMeter"
+      :title="$t('main:tools.PowerMeter.title')"
+      :popoverContent="$t('main:meta.parentheses', {main: $t('main:tools.PowerMeter.description'), sub: $t('main:tools.common.circleInstruction')})"
+      :verticalOffset="60"
+      :layout="layout"
+    />
     <li><hr class="dropdown-divider"></li>
     <ToolItem
       id="TextLabel"

@@ -123,7 +123,10 @@ function applyDetectorData(msg) {
   }
   for (const d of msg.detectors || []) {
     const obj = app.scene.objs[d.objIndex];
-    if (obj && obj.constructor.type === 'Detector') {
+    if (!obj || obj.constructor.type !== (d.type || 'Detector')) continue;
+    if (d.type === 'PowerMeter') {
+      obj.power = d.power;
+    } else {
       obj.power = d.power;
       obj.normal = d.normal;
       obj.shear = d.shear;

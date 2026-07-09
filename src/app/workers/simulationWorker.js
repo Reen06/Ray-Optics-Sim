@@ -66,21 +66,30 @@ let lastFrameTime = 0;
 let frameInFlight = false;
 
 /**
- * Collect readings of top-level Detector objects so the main thread can copy
- * them onto its own scene objects. (Detectors nested inside modules are not
- * addressable by scene.objs index and are skipped.)
+ * Collect readings of top-level sensor objects (Detector, PowerMeter) so the
+ * main thread can copy them onto its own scene objects. (Sensors nested
+ * inside modules are not addressable by scene.objs index and are skipped.)
  */
 function collectDetectors(scene) {
   const detectors = [];
   for (let i = 0; i < scene.objs.length; i++) {
     const obj = scene.objs[i];
-    if (obj && obj.constructor.type === 'Detector') {
+    if (!obj) continue;
+    const type = obj.constructor.type;
+    if (type === 'Detector') {
       detectors.push({
         objIndex: i,
+        type,
         power: obj.power,
         normal: obj.normal,
         shear: obj.shear,
         binData: obj.binData ? Array.from(obj.binData) : null
+      });
+    } else if (type === 'PowerMeter') {
+      detectors.push({
+        objIndex: i,
+        type,
+        power: obj.power
       });
     }
   }

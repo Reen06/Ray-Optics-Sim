@@ -182,6 +182,10 @@
       "title": "Detector",
       "description": "A tool for measuring the rate of energy flow (P), the rate of perpendicular momentum flow (F⊥), and the rate of parallel momentum flow (F∥) through a line segment.  The units are arbitrary."
     },
+    "PowerMeter": {
+      "title": "Power Meter",
+      "description": "A circular sensor that reads the total power of the light entering it (like a photodiode). Rays pass through unchanged."
+    },
     "TextLabel": {
       "title": "Text",
       "description": "A text label."

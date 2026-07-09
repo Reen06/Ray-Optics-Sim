@@ -384,6 +384,9 @@
       "binSize": "Bin Size",
       "exportData": "Export data"
     },
+    "PowerMeter": {
+      "info": "Reads the total power P of the rays entering the circle, like a photodiode. With real units configured, P is in mW (1 brightness-unit ≡ 1 mW per unit depth). Rays pass through unchanged. Use the Compute button for converged high-precision readings."
+    },
     "TextLabel": {
       "text": "Text",
       "textHere": "Text Here",

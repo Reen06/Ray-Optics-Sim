@@ -230,6 +230,22 @@ class Detector extends LineObjMixin(BaseSceneObj) {
     return false; // It is unclear what properties should be scaled.
   }
 
+  /**
+   * Get the current readings and irradiance-map data for UI panels.
+   * @returns {Object} `{ power, normal, shear, binSize, binData, length }`
+   * (lengths in canvas units; callers convert to real units for display).
+   */
+  getSensorData() {
+    return {
+      power: this.power,
+      normal: this.normal,
+      shear: this.shear,
+      binSize: this.binSize,
+      binData: this.binData,
+      length: geometry.distance(this.p1, this.p2)
+    };
+  }
+
   onSimulationStart() {
     this.power = 0;
     this.normal = 0;

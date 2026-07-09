@@ -58,6 +58,7 @@ export const DiffractionGrating = require('./sceneObjs/blocker/DiffractionGratin
 export const Ruler = require('./sceneObjs/other/Ruler.js').default;
 export const Protractor = require('./sceneObjs/other/Protractor.js').default;
 export const Detector = require('./sceneObjs/other/Detector.js').default;
+export const PowerMeter = require('./sceneObjs/other/PowerMeter.js').default;
 export const TextLabel = require('./sceneObjs/other/TextLabel.js').default;
 export const LineArrow = require('./sceneObjs/other/LineArrow.js').default;
 export const Drawing = require('./sceneObjs/other/Drawing.js').default;

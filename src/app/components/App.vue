@@ -23,6 +23,7 @@
   <ObjBar />
   <SimulatorControls />
   <ComputeBar />
+  <SensorPanel />
   <Footer />
   <ModuleModal />
   <SaveModal />
@@ -49,6 +50,7 @@ import Toolbar from './toolbar/Toolbar.vue';
 import ObjBar from './ObjBar.vue';
 import SimulatorControls from './SimulatorControls.vue';
 import ComputeBar from './ComputeBar.vue';
+import SensorPanel from './SensorPanel.vue';
 import Footer from './Footer.vue';
 import ModuleModal from './ModuleModal.vue';
 import SaveModal from './SaveModal.vue';
@@ -69,6 +71,7 @@ export default {
     ObjBar,
     SimulatorControls,
     ComputeBar,
+    SensorPanel,
     Footer,
     ModuleModal,
     SaveModal,
