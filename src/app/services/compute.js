@@ -307,12 +307,34 @@ export function startCompute(detail) {
   const scene = app.scene;
   const json = JSON.parse(scene.toJSON());
 
-  // Scale the source ray density by the detail multiplier so the extra ray
-  // budget is actually used by denser emission rather than deeper truncation.
+  // Scale the source ray density with the detail multiplier so the extra ray
+  // budget is actually spent on denser emission (better detector/scattering
+  // statistics) rather than just deeper per-ray truncation -- but MUCH more
+  // conservatively than the ray-count budget itself (sqrt, not linear).
+  // Both rendering paths visually degrade at very high ray density: the
+  // default 2D-canvas renderer draws each ray at a proportionally lower
+  // alpha (correct for physics/detector readings) but plain source-over
+  // blending doesn't reconstruct the original visual brightness from many
+  // faint lines (dim, and only visible once zoomed in enough to spread each
+  // thin line across more screen pixels); the WebGL "Correct Brightness"
+  // renderer's alpha channel is gamma-corrected from peak brightness, which
+  // picks up faint-but-nonzero background contributions from the much
+  // larger ray count as a visible haze/tint across the whole canvas. Both
+  // are inherent to the existing renderers at densities far beyond what the
+  // live preview ever reaches, not something a linear density multiplier
+  // needs to make worse -- sqrt keeps a meaningful statistical benefit
+  // (e.g. 10x more samples at max detail, not 100x) while keeping the
+  // visual result close to what "Detail x1" already looks like.
+  const densityMultiplier = Math.sqrt(multiplier);
+  // Absolute ceiling regardless of the multiplier or the live scene's own
+  // density setting: if the user had already turned live Ray Density up
+  // before hitting Compute, the multiplier alone can't be relied on to keep
+  // the *final* density in the clean-looking range verified above.
+  const MAX_SNAPSHOT_DENSITY = 2;
   if (scene.mode === 'rays' || scene.mode === 'extended') {
-    json.rayModeDensity = (json.rayModeDensity ?? 0.1) * multiplier;
+    json.rayModeDensity = Math.min(MAX_SNAPSHOT_DENSITY, (json.rayModeDensity ?? 0.1) * densityMultiplier);
   } else {
-    json.imageModeDensity = (json.imageModeDensity ?? 1) * multiplier;
+    json.imageModeDensity = Math.min(MAX_SNAPSHOT_DENSITY, (json.imageModeDensity ?? 1) * densityMultiplier);
   }
 
   if (!json.randomSeed) {

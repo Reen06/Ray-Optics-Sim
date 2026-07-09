@@ -856,7 +856,7 @@
     "recompute": "Recompute",
     "detail": "Detail",
     "snapshot": "Snapshot",
-    "description": "The scene always shows a fast live preview while you edit. Press Compute to run a full high-detail simulation in the background: the result renders progressively and detector readings become high-precision. The Detail slider multiplies the ray density and ray budget of the snapshot only (it does not affect the live preview). Snapshots use a fixed random seed by default, so readings are reproducible and comparable between design iterations."
+    "description": "The scene always shows a fast live preview while you edit. Press Compute to run a full high-detail simulation in the background: the result renders progressively and detector readings become high-precision. The Detail slider mostly increases the ray budget (better statistics, smoother scattering); ray density only increases modestly and is capped, since very high visual ray density makes the default and \"Correct Brightness\" renderers look dimmer/hazier, not brighter. Snapshots use a fixed random seed by default, so readings are reproducible and comparable between design iterations."
   },
   "footer": {
     "processing": "Processing… Click here to stop.",
