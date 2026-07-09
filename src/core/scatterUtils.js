@@ -44,21 +44,27 @@ export function hasScattering(obj) {
   return (obj.roughness > 0) || (obj.diffuse > 0) || (obj.albedo != null && obj.albedo < 1);
 }
 
-/** One standard-Gaussian sample using the scene's seeded RNG (Box-Muller). */
-function sampleGaussian(rng) {
+/**
+ * One standard-Gaussian sample using the scene's seeded RNG (Box-Muller).
+ * Exported for reuse by other volumetric/surface scattering code (e.g.
+ * `AirScatterVolume.js`) that wants the same reproducible-per-seed sampling.
+ */
+export function sampleGaussian(rng) {
   let u = 0;
   while (u === 0) u = rng();
   const v = rng();
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-function rotateVec(v, angle) {
+/** Rotate a 2D vector by `angle` radians. Exported for reuse (see `sampleGaussian`). */
+export function rotateVec(v, angle) {
   const c = Math.cos(angle);
   const s = Math.sin(angle);
   return { x: v.x * c - v.y * s, y: v.x * s + v.y * c };
 }
 
-function normalizeVec(v) {
+/** Normalize a 2D vector, or null if it's (near-)zero. Exported for reuse. */
+export function normalizeVec(v) {
   const len = Math.hypot(v.x, v.y);
   if (len < 1e-12) return null;
   return { x: v.x / len, y: v.y / len };

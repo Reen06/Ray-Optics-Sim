@@ -69,6 +69,18 @@ const PROPERTY_CALLBACKS = {
   maxRayDepth: (value) => {
     app.simulator?.updateSimulation(false, true)
   },
+  airScatteringEnabled: (value) => {
+    app.simulator?.updateSimulation(false, true)
+  },
+  airScatteringMeanFreePath: (value) => {
+    app.simulator?.updateSimulation(false, true)
+  },
+  airScatteringStrength: (value) => {
+    app.simulator?.updateSimulation(false, true)
+  },
+  airScatteringAbsorption: (value) => {
+    app.simulator?.updateSimulation(false, true)
+  },
   observerSize: (value) => {
     if (app.simulator?.scene.observer) {
       app.simulator.scene.observer.r = value * 0.5

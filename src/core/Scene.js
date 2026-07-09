@@ -18,6 +18,7 @@ import * as sceneObjs from './sceneObjs.js';
 import { versionUpdate } from './versionUpdate.js';
 import i18next from 'i18next';
 import seedrandom from 'seedrandom';
+import AirScatterVolume from './AirScatterVolume.js';
 
 /**
  * The version of the JSON data format of the scene, which matches the major version number of the app starting from version 5.0.
@@ -223,6 +224,10 @@ class Scene {
     symbolicBodyMerging: false,
     maxRayDepth: Infinity,
     randomSeed: null,
+    airScatteringEnabled: false,
+    airScatteringMeanFreePath: 300,
+    airScatteringStrength: 15,
+    airScatteringAbsorption: 0,
     theme: {
       background: {
         color: { r: 0, g: 0, b: 0 }
@@ -461,7 +466,17 @@ class Scene {
       return expandedObjs;
     }
 
-    return expandObjs(this.objs).filter(obj => obj.constructor.isOptical);
+    const realObjs = expandObjs(this.objs).filter(obj => obj.constructor.isOptical);
+    if (this.airScatteringEnabled) {
+      // A virtual, always-on "ambient medium" object (never in `this.objs`,
+      // never drawn) that every ray's nearest-intersection search competes
+      // against exactly like a real surface -- see AirScatterVolume.js.
+      if (!this._airScatterVolume) {
+        this._airScatterVolume = new AirScatterVolume(this);
+      }
+      return [...realObjs, this._airScatterVolume];
+    }
+    return realObjs;
   }
 
   /**

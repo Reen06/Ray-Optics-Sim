@@ -929,5 +929,27 @@
       "rotateCW": "Rotate Clockwise",
       "rotateCCW": "Rotate Counter-Clockwise"
     }
+  },
+  "atmosphere": {
+    "title": "Atmosphere",
+    "onLabel": "On",
+    "description": "Real light scatters slightly off air/dust/fog molecules as it travels, not just at surfaces -- this is why a real laser beam or a headlight in fog looks like a soft line, not an infinitely sharp one. Turn this on to give rays a small chance to scatter along their path through empty space.",
+    "enable": "Enable air scattering",
+    "meanFreePath": "Mean Free Path",
+    "meanFreePathHint": "Average distance a ray travels before scattering. Smaller = thicker/hazier medium (and more scatter events per ray, so slower to compute); larger = clearer air.",
+    "strength": "Scatter Strength",
+    "strengthHint": "How much each scatter event bends the ray, in degrees (Gaussian spread). Small = a soft, mostly-straight beam; large = diffuse, foggy light.",
+    "absorption": "Absorption",
+    "absorptionHint": "Fraction of brightness lost at each scatter event (0 = lossless scattering, stays bright; higher = the medium itself dims the light, like smoke).",
+    "presetsTitle": "Presets",
+    "newPresetName": "New preset name",
+    "savePreset": "Save",
+    "presets": {
+      "off": "Off",
+      "clear": "Clear Air",
+      "haze": "Light Haze",
+      "fog": "Fog",
+      "smoke": "Thick Smoke"
+    }
   }
 }

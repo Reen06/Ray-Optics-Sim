@@ -102,6 +102,15 @@
       </div>
 
       <PopupSelectControl
+        :label="$t('simulator:atmosphere.title')"
+        :value="airScatteringEnabled ? 'on' : 'off'"
+        :display-fn="value => value === 'on' ? $t('simulator:atmosphere.onLabel') : $t('simulator:common.defaultOption')"
+        popup-target="atmosphereModal"
+        :popover-content="$t('simulator:atmosphere.description')"
+        :layout="layout"
+      />
+
+      <PopupSelectControl
         :label="$t('simulator:settings.theme.title')"
         :value="themeStore.isDefaultTheme.value ? 'default' : 'custom'"
         :display-fn="value => value === 'default' ? $t('simulator:common.defaultOption') : $t('simulator:common.customOption')"
@@ -257,6 +266,7 @@ export default {
     const preferences = usePreferencesStore()
     const themeStore = useThemeStore()
     const colorMode = toRef(scene, 'colorMode')
+    const airScatteringEnabled = toRef(scene, 'airScatteringEnabled')
     const lang = ref(window.lang)
     const localeData = ref(window.localeData)
     
@@ -312,6 +322,7 @@ export default {
 
     return {
       colorMode: scene.colorMode,
+      airScatteringEnabled,
       mode: scene.mode,
       showRayArrows: scene.showRayArrows,
       showGrid: scene.showGrid,
