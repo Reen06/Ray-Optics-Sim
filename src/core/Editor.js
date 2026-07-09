@@ -486,19 +486,23 @@ class Editor {
 
       // Get precise delta from wheel event
       const deltaY = e.deltaY || e.detail || e.wheelDelta;
-      
-      // Calculate zoom speed based on current scale
+
       const currentScale = self.scene.scale * self.scene.lengthScale;
-      const zoomSpeed = Math.max(0.05, currentScale * 0.05); // Faster zoom at higher scales
-      
-      // Calculate new scale with pixel-precise delta
+      // Multiplicative (percentage-per-tick) step, NOT an additive one: a
+      // fixed step size (even one that scales down toward a floor, as this
+      // used to) becomes a huge relative jump once the scale is small, and
+      // an imperceptible one once the scale is large — exactly the
+      // "zooming out accelerates, zooming in crawls" complaint. A constant
+      // ratio per tick keeps the felt speed the same at every zoom level, no
+      // matter how wide the overall min/max range is.
+      const ZOOM_STEP_RATIO = 1.05; // 5% per wheel tick
       let newScale = currentScale;
       if (deltaY > 0) {
-        newScale = currentScale - zoomSpeed;
+        newScale = currentScale / ZOOM_STEP_RATIO;
       } else if (deltaY < 0) {
-        newScale = currentScale + zoomSpeed;
+        newScale = currentScale * ZOOM_STEP_RATIO;
       }
-      
+
       // Clamp scale between min and max values
       newScale = Math.max(Editor.MIN_SCALE, Math.min(Editor.MAX_SCALE, newScale));
       

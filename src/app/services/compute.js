@@ -76,6 +76,31 @@ let worker = null;
 let runId = 0;
 let prevManualLightRedraw = false;
 let initialized = false;
+/** Whether the current run has ever produced a bitmap ('frame' message). */
+let receivedAnyFrame = false;
+/** Watchdog: if the worker never responds at all (no progress/frame/done),
+ * fail loudly instead of leaving the UI stuck on a frozen canvas forever. */
+let watchdogTimer = null;
+const WATCHDOG_MS = 15000;
+
+function clearWatchdog() {
+  if (watchdogTimer) {
+    clearTimeout(watchdogTimer);
+    watchdogTimer = null;
+  }
+}
+
+/** (Re)arm the stuck-worker watchdog for the current run. */
+function armWatchdog() {
+  clearWatchdog();
+  const watchedRunId = runId;
+  watchdogTimer = setTimeout(() => {
+    watchdogTimer = null;
+    if (computeState.state !== 'computing' || watchedRunId !== runId) return;
+    computeState.error = 'Compute did not respond — reverted to live preview.';
+    exitToLive();
+  }, WATCHDOG_MS);
+}
 
 /**
  * The viewport (origin/scale/dpr) that the current worker run was requested
@@ -216,12 +241,18 @@ function onWorkerMessage(event) {
   const msg = event.data;
   if (!msg || msg.runId !== runId) return;
 
+  // Any message at all proves the worker is alive; only a total silence
+  // needs the watchdog.
+  clearWatchdog();
+
   if (msg.type === 'frame') {
     if (computeState.state === 'computing' || computeState.state === 'snapshot') {
+      receivedAnyFrame = true;
       blitFrame(msg.bitmap);
     } else {
       msg.bitmap.close();
     }
+    if (computeState.state === 'computing') armWatchdog();
   } else if (msg.type === 'progress') {
     if (computeState.state !== 'computing') return;
     computeState.processedRayCount = msg.processedRayCount;
@@ -229,9 +260,19 @@ function onWorkerMessage(event) {
     computeState.progress = Math.min(1, msg.processedRayCount / msg.rayCountLimit);
     applyDetectorData(msg);
     emitStatus(msg, true);
+    armWatchdog();
   } else if (msg.type === 'done') {
     if (computeState.state !== 'computing') return;
     if (msg.cancelled) {
+      exitToLive();
+      return;
+    }
+    if (!receivedAnyFrame) {
+      // The compute "succeeded" but no snapshot image was ever produced
+      // (e.g. createImageBitmap failed in this browser) -- showing
+      // "Snapshot complete" over a blank/stale canvas would be worse than
+      // just reverting to live with a visible reason.
+      computeState.error = msg.error || 'Snapshot image could not be created in this browser.';
       exitToLive();
       return;
     }
@@ -287,6 +328,7 @@ export function startCompute(detail) {
   app.simulator.manualLightRedraw = true;
 
   runId++;
+  receivedAnyFrame = false;
   computeState.state = 'computing';
   computeState.progress = 0;
   computeState.processedRayCount = 0;
@@ -296,6 +338,7 @@ export function startCompute(detail) {
   computeState.reachedLimit = false;
   computeState.error = null;
   computeState.warning = null;
+  armWatchdog();
 
   const dpr = window.devicePixelRatio || 1;
   currentViewport = {
@@ -330,6 +373,7 @@ export function cancelCompute() {
 export function exitToLive() {
   if (computeState.state === 'live') return;
   const wasComputing = computeState.state === 'computing';
+  clearWatchdog();
   computeState.state = 'live';
   computeState.progress = 0;
   if (wasComputing) {

@@ -103,6 +103,13 @@ function collectDetectors(scene) {
   return detectors;
 }
 
+// Set whenever createImageBitmap() rejects, so a snapshot that never
+// actually got any pixels onto the main thread's canvas still surfaces a
+// visible error instead of silently reporting a successful, blank result
+// (this previously failed silently — a caught-and-dropped rejection here
+// left the main thread believing the compute succeeded with nothing drawn).
+let lastFrameError = null;
+
 function postFrame(runId, sourceCanvas) {
   if (frameInFlight) return;
   frameInFlight = true;
@@ -113,8 +120,9 @@ function postFrame(runId, sourceCanvas) {
       return;
     }
     self.postMessage({ type: 'frame', runId, bitmap }, [bitmap]);
-  }).catch(() => {
+  }).catch((e) => {
     frameInFlight = false;
+    lastFrameError = String(e && e.message ? e.message : e);
   });
 }
 
@@ -126,7 +134,9 @@ function postFinalFrame(runId, sourceCanvas) {
       return;
     }
     self.postMessage({ type: 'frame', runId, bitmap }, [bitmap]);
-  }).catch(() => { });
+  }).catch((e) => {
+    lastFrameError = String(e && e.message ? e.message : e);
+  });
 }
 
 function run(msg) {
@@ -141,6 +151,7 @@ function run(msg) {
   cancelled = false;
   lastFrameTime = 0;
   frameInFlight = false;
+  lastFrameError = null;
 
   const scene = new Scene();
   scene.loadJSON(sceneJSON, () => { });
@@ -237,7 +248,7 @@ function run(msg) {
         totalTruncation: simulator.totalTruncation,
         brightnessScale: simulator.brightnessScale,
         detectors: collectDetectors(scene),
-        error: simulator.error || scene.error || null,
+        error: simulator.error || scene.error || (lastFrameError ? `Snapshot image failed: ${lastFrameError}` : null),
         warning: simulator.warning || scene.warning || null
       });
     };

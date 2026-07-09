@@ -15,6 +15,9 @@
 -->
 
 <template>
+  <div class="compute-error-banner" v-if="state === 'live' && lastError" @click="dismissError">
+    ⚠ {{ lastError }} <span class="compute-error-dismiss">✕</span>
+  </div>
   <div class="compute-bar" v-if="supported">
     <!-- Live state: detail slider + Compute button -->
     <template v-if="state === 'live'">
@@ -110,6 +113,13 @@ export default {
       return computeState.warning || computeState.error || ''
     })
 
+    // Shown as a visible banner (not just a hover title) once back in the
+    // live state after a failed compute (worker error, watchdog timeout, or
+    // a snapshot that produced no image) -- a silently-swallowed failure
+    // previously looked identical to "nothing happened".
+    const lastError = computed(() => computeState.error)
+    const dismissError = () => { computeState.error = null }
+
     const handleCompute = (event) => {
       event.target.blur()
       startCompute(snapshotDetail.value)
@@ -135,6 +145,8 @@ export default {
       rayCountLabel,
       elapsedLabel,
       snapshotTitle,
+      lastError,
+      dismissError,
       handleCompute,
       handleCancel,
       handleLive
@@ -250,5 +262,26 @@ export default {
   font-size: 9pt;
   opacity: 0.95;
   font-variant-numeric: tabular-nums;
+}
+
+.compute-error-banner {
+  position: fixed;
+  bottom: 70px;
+  right: 75px;
+  z-index: 100;
+  max-width: 340px;
+  background-color: rgba(180, 40, 40, 0.92);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 0.5em;
+  font-size: 9.5pt;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.compute-error-dismiss {
+  float: right;
+  opacity: 0.8;
+  margin-left: 8px;
 }
 </style>
