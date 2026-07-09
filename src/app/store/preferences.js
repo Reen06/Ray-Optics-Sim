@@ -25,7 +25,7 @@ const PREFERENCES_DEFAULTS = {
   sidebarTab: 'visual',
   sidebarWidth: 400,
   showStatus: false,
-  showSimulatorControls: false,
+  showSimulatorControls: true,
   help: true,
   snapshotDetail: 1,
 }

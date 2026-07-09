@@ -77,6 +77,18 @@ let runId = 0;
 let prevManualLightRedraw = false;
 let initialized = false;
 
+/**
+ * The viewport (origin/scale/dpr) that the current worker run was requested
+ * with, and the most recent frame it produced. Kept around (instead of
+ * discarding each bitmap after drawing) so the snapshot can be reprojected
+ * onto the canvas whenever the user pans or zooms afterward, rather than
+ * either staying frozen at its original screen position (visually drifting
+ * out of alignment with the scene) or being wiped back to the live preview.
+ */
+let lastBitmap = null;
+let capturedViewport = null;
+let currentViewport = null;
+
 function getWorker() {
   if (!worker) {
     worker = new Worker(new URL('../workers/simulationWorker.js', import.meta.url));
@@ -91,12 +103,47 @@ function getWorker() {
   return worker;
 }
 
+function releaseBitmap() {
+  if (lastBitmap) {
+    lastBitmap.close();
+    lastBitmap = null;
+  }
+  capturedViewport = null;
+}
+
+/**
+ * Redraw the frozen snapshot bitmap onto the light canvas, reprojected from
+ * the viewport it was captured at onto the scene's current origin/scale —
+ * this is what lets the user pan/zoom around after a compute without losing
+ * the result: the same scene point stays under the same screen pixel.
+ */
+function redrawSnapshot() {
+  const canvasLight = app.canvasLight;
+  const scene = app.scene;
+  if (!lastBitmap || !capturedViewport || !canvasLight || !scene) return;
+  const zoomRatio = scene.scale / capturedViewport.scale;
+  const dpr = capturedViewport.dpr;
+  const ctx = canvasLight.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.clearRect(0, 0, canvasLight.width, canvasLight.height);
+  const tx = scene.origin.x * dpr - capturedViewport.originX * dpr * zoomRatio;
+  const ty = scene.origin.y * dpr - capturedViewport.originY * dpr * zoomRatio;
+  ctx.setTransform(zoomRatio, 0, 0, zoomRatio, tx, ty);
+  ctx.drawImage(lastBitmap, 0, 0);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
 function blitFrame(bitmap) {
   const canvasLight = app.canvasLight;
   if (!canvasLight) {
     bitmap.close();
     return;
   }
+  if (lastBitmap) lastBitmap.close();
+  lastBitmap = bitmap;
+  capturedViewport = currentViewport;
   // While a snapshot is displayed, the (unused) live WebGL layer is hidden so
   // it can't show stale content on top of / below the snapshot bitmap.
   if (app.canvasLightWebGL) {
@@ -104,13 +151,27 @@ function blitFrame(bitmap) {
   }
   canvasLight.style.display = '';
   canvasLight.style.opacity = 1;
-  const ctx = canvasLight.getContext('2d');
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.clearRect(0, 0, canvasLight.width, canvasLight.height);
-  ctx.drawImage(bitmap, 0, 0, canvasLight.width, canvasLight.height);
-  bitmap.close();
+  redrawSnapshot();
+}
+
+/**
+ * Whether two `scene.toJSON()` strings differ in anything other than pure
+ * view state (pan/zoom). Origin and scale are themselves part of the
+ * serialized scene (panning/zooming are undoable), so a raw string/simulator
+ * 'update' event can't tell "the user edited something" apart from "the user
+ * panned" — this comparison can.
+ */
+function contentChanged(oldJSON, newJSON) {
+  if (oldJSON === newJSON) return false;
+  try {
+    const a = JSON.parse(oldJSON || '{}');
+    const b = JSON.parse(newJSON || '{}');
+    delete a.origin; delete b.origin;
+    delete a.scale; delete b.scale;
+    return JSON.stringify(a) !== JSON.stringify(b);
+  } catch (e) {
+    return true; // can't tell: treat as a real change, fail toward correctness
+  }
 }
 
 function applyDetectorData(msg) {
@@ -237,17 +298,20 @@ export function startCompute(detail) {
   computeState.warning = null;
 
   const dpr = window.devicePixelRatio || 1;
+  currentViewport = {
+    originX: scene.origin.x,
+    originY: scene.origin.y,
+    scale: scene.scale,
+    dpr
+  };
   getWorker().postMessage({
     cmd: 'run',
     runId,
     sceneJSON: JSON.stringify(json),
     viewport: {
-      originX: scene.origin.x,
-      originY: scene.origin.y,
-      scale: scene.scale,
+      ...currentViewport,
       width: app.canvasLight.width / dpr,
-      height: app.canvasLight.height / dpr,
-      dpr
+      height: app.canvasLight.height / dpr
     },
     rayCountLimit,
     maxMs: SNAPSHOT_MAX_MS
@@ -272,6 +336,8 @@ export function exitToLive() {
     // Make sure a still-running worker sim stops burning CPU.
     getWorker().postMessage({ cmd: 'stop', runId });
   }
+  releaseBitmap();
+  currentViewport = null;
   if (app.canvasLightWebGL) {
     app.canvasLightWebGL.style.visibility = '';
   }
@@ -294,13 +360,50 @@ export function initComputeService() {
   // simulation; full detail is the snapshot compute's job.
   app.simulator.rayCountLimit = LIVE_PREVIEW_RAY_BUDGET;
 
-  // Any update that would redraw the light layer means the scene (or view)
-  // changed: leave the snapshot and go back to live so the canvas never shows
-  // stale-but-undimmed results and editing always has immediate feedback.
-  app.simulator.on('update', ({ skipLight, forceRedraw }) => {
+  // `updateSimulation()` fires on every pan/zoom/fit-to-screen too (they're
+  // plain scene.origin/scale mutations, not just object edits), not only on
+  // real content edits. While a snapshot is displayed we don't want those to
+  // wipe it back to the sparse live preview — instead just reproject the
+  // frozen bitmap onto the new view so it stays visible and aligned.
+  //
+  // The redraw must happen on the NEXT frame, not synchronously inside this
+  // listener: 'update' is emitted at the very top of updateSimulation(), but
+  // whenever origin/scale actually changed (exactly the pan/zoom case) the
+  // rest of that same call still clears/re-inits the light canvas further
+  // down (`shouldClearLightLayer`) even though skipLight ends up forced true
+  // — so a synchronous redraw here would just get wiped a moment later by
+  // the same call.
+  let redrawScheduled = false;
+  app.simulator.on('update', ({ forceRedraw }) => {
     if (computeState.state === 'live') return;
-    if (skipLight) return;
-    if (forceRedraw) return; // our own exitToLive redraw
-    exitToLive();
+    if (forceRedraw) return; // our own exitToLive/manual redraw call
+    if (redrawScheduled) return;
+    redrawScheduled = true;
+    requestAnimationFrame(() => {
+      redrawScheduled = false;
+      if (computeState.state !== 'live') redrawSnapshot();
+    });
+  });
+
+  // `manualLightRedraw` (which we keep set for the whole computing/snapshot
+  // duration, to stop the live simulator from repainting over our bitmap)
+  // also drives an upstream "results are stale, dim the canvas" indicator
+  // for the unrelated "Auto Refresh off" feature. That doesn't apply to us —
+  // our bitmap is never stale, it's just reprojected — so force it back to
+  // full opacity whenever it fires during compute/snapshot.
+  app.simulator.on('lightLayerSyncChange', ({ isSynced }) => {
+    if (computeState.state === 'live') return;
+    if (isSynced) return;
+    if (app.canvasLightWebGL) app.canvasLightWebGL.style.opacity = 1;
+    if (app.canvasLight) app.canvasLight.style.opacity = 1;
+  });
+
+  // The actual "did the user edit the scene" signal: Editor.onActionComplete
+  // fires 'newAction' with the before/after JSON for every completed action,
+  // including pan/zoom (origin/scale are serialized, undoable scene fields)
+  // — so only exit to live when something other than the view changed.
+  app.editor?.on('newAction', ({ newJSON, oldJSON }) => {
+    if (computeState.state === 'live') return;
+    if (contentChanged(oldJSON, newJSON)) exitToLive();
   });
 }
