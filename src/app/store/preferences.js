@@ -28,6 +28,8 @@ const PREFERENCES_DEFAULTS = {
   showSimulatorControls: true,
   help: true,
   snapshotDetail: 1,
+  /** Target alpha for the brightest ray after BrightnessGainBar's "Auto Fit" -- user-tunable since "comfortable" is a matter of taste. */
+  autoFitTargetAlpha: 0.35,
 }
 
 // Callbacks for preference changes
