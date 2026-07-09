@@ -50,6 +50,10 @@
               } : undefined"
               v-html="$t('simulator:file.importShapes.title') + '<sup style=\'color: #0006;\'>Beta</sup>'"
             ></button></li>
+            <li v-if="cloudAvailable"><hr class="dropdown-divider"></li>
+            <li v-if="cloudAvailable"><button class="dropdown-item" type="button" id="cloud_save" @click="handleCloudSave" v-text="'Save' + (cloudDocName ? '' : ' to Server…')"></button></li>
+            <li v-if="cloudAvailable"><button class="dropdown-item" type="button" id="cloud_save_as" @click="handleCloudSaveAs" v-text="'Save As to Server…'"></button></li>
+            <li v-if="cloudAvailable"><button class="dropdown-item" type="button" id="cloud_open" @click="handleCloudOpen" v-text="'Open from Server…'"></button></li>
             <li><button class="dropdown-item" type="button" id="export_svg" @click="handleExportSvg" v-text="$t('simulator:file.export.title')"></button></li>
             <li><button 
               class="dropdown-item" 
@@ -88,7 +92,7 @@
         </button>
       </div>
     </div>
-    <div id="file_text" class="row justify-content-center title" v-text="$t('simulator:file.title')"></div>
+    <div id="file_text" class="row justify-content-center title" :title="cloudDocName ? 'Open from server: ' + cloudDocName : ''" v-text="cloudDocName || $t('simulator:file.title')"></div>
   </div>
 
   <div v-if="layout === 'mobile'" class="col p-1">
@@ -105,6 +109,11 @@
           <li><button id="save_button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#saveModal" v-text="$t('simulator:file.save.title')"></button></li>
           <li><button class="dropdown-item" type="button" id="open_mobile" @click="handleOpen" v-text="$t('simulator:file.open.title')"></button></li>
           <li><button class="dropdown-item" type="button" id="import_shapes_mobile" @click="handleImportShapes" v-html="$t('simulator:file.importShapes.title') + '<sup style=\'color: #0006;\'>Beta</sup>'"></button></li>
+          <li v-if="cloudAvailable"><hr class="dropdown-divider"></li>
+          <li v-if="cloudAvailable && cloudDocName"><div class="dropdown-item-text text-truncate" style="opacity:0.7;font-size:0.85em" v-text="'☁ ' + cloudDocName"></div></li>
+          <li v-if="cloudAvailable"><button class="dropdown-item" type="button" id="cloud_save_mobile" @click="handleCloudSave" v-text="'Save' + (cloudDocName ? '' : ' to Server…')"></button></li>
+          <li v-if="cloudAvailable"><button class="dropdown-item" type="button" id="cloud_save_as_mobile" @click="handleCloudSaveAs" v-text="'Save As to Server…'"></button></li>
+          <li v-if="cloudAvailable"><button class="dropdown-item" type="button" id="cloud_open_mobile" @click="handleCloudOpen" v-text="'Open from Server…'"></button></li>
           <li><button class="dropdown-item" type="button" id="export_svg_mobile" @click="handleExportSvg" v-text="$t('simulator:file.export.title')"></button></li>
           <li><button class="dropdown-item" type="button" id="get_link_mobile" @click="handleGetLink" v-text="$t('simulator:file.copyLink.title')"></button></li>
           <li><hr class="dropdown-divider"></li>
@@ -131,11 +140,12 @@
  * @description The Vue component for the 'File' section in the toolbar.
  * @vue-prop {String} layout - The layout of the toolbar. Can be 'mobile' or 'desktop'.
  */
-import { computed, toRef } from 'vue'
+import { computed, ref, toRef, onMounted, onBeforeUnmount } from 'vue'
 import { vTooltipPopover } from '../../directives/tooltip-popover'
 import { usePreferencesStore } from '../../store/preferences'
 import { app } from '../../services/app.js'
 import { jsonEditorService } from '../../services/jsonEditor.js'
+import * as cloudFiles from '../../services/cloudFiles.js'
 
 export default {
   name: 'FileBar',
@@ -153,11 +163,40 @@ export default {
     const help = toRef(preferences, 'help')
     const tooltipType = computed(() => help.value ? 'popover' : null)
 
+    const cloudAvailable = ref(false)
+    const cloudDocName = ref('')
+    const onCloudDocChanged = (e) => {
+      cloudDocName.value = (e && e.detail && e.detail.name) || ''
+    }
+    onMounted(async () => {
+      cloudAvailable.value = await cloudFiles.isAvailable()
+      const current = app.getCloudDoc && app.getCloudDoc()
+      cloudDocName.value = current ? current.name : ''
+      document.addEventListener('cloudDoc:changed', onCloudDocChanged)
+    })
+    onBeforeUnmount(() => {
+      document.removeEventListener('cloudDoc:changed', onCloudDocChanged)
+    })
+
     return {
-      tooltipType
+      tooltipType,
+      cloudAvailable,
+      cloudDocName
     }
   },
   methods: {
+    handleCloudSave(event) {
+      event.target.blur();
+      app.saveCloudSmart();
+    },
+    handleCloudSaveAs(event) {
+      event.target.blur();
+      app.startCloudSaveAs();
+    },
+    handleCloudOpen(event) {
+      event.target.blur();
+      app.startCloudOpen();
+    },
     handleUndo(event) {
       event.target.blur();
       if (jsonEditorService.isSynced || !jsonEditorService.aceEditor) {

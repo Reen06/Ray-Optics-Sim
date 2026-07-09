@@ -27,6 +27,7 @@ import { objBar } from '../services/objBar.js';
 import { saveAs } from 'file-saver';
 import i18next, { t, use } from 'i18next';
 import { jsonEditorService } from '../services/jsonEditor.js';
+import * as cloudFiles from '../services/cloudFiles.js';
 import { statusEmitter, STATUS_EVENT_NAMES } from '../composables/useStatus.js';
 import { mapURL, parseLinks } from '../utils/links.js';
 import { parseShapesFile } from '../utils/svgImport.js';
@@ -645,11 +646,117 @@ function initAppService() {
     editor.onActionComplete();
     hasUnsavedChange = false;
     jsonEditorService.updateContent(editor.lastActionJson, null, true);
+    setCloudDoc(null);
   };
 
   app.getLink = getLink;
   app.openFile = function () {
     document.getElementById('openfile').click();
+  };
+
+  // "Save" / "Save As" / "Open from Server" — the cloud file picker (see
+  // CloudFilesModal.vue), which saves/opens into the signed-in user's own NAS
+  // home or a shared folder instead of the local disk / a compressed URL.
+  // The shared state (currentCloudDoc) and its helpers are top-level module
+  // symbols (declared further down, alongside `warning`/`error`/
+  // `hasUnsavedChange`) so both this closure's app.* methods AND the
+  // standalone openFile()/reset() functions can read/clear it.
+  app.getCloudDoc = function () {
+    return currentCloudDoc;
+  };
+
+  // Called by CloudFilesModal after a rename/delete in the file browser: if
+  // that entry was the document currently open in the editor, forget it so a
+  // later "Save" doesn't silently recreate the old path out from under the
+  // rename/delete. Renaming updates the tracked path/name to match instead of
+  // just forgetting it, since the same bytes are still open, just relocated.
+  app.onCloudEntryRenamed = function (root, path, newPath, newName) {
+    if (currentCloudDoc && currentCloudDoc.root === root && currentCloudDoc.path === path) {
+      setCloudDoc({ root: root, path: newPath, name: newName });
+    }
+  };
+
+  app.onCloudEntryDeleted = function (root, path) {
+    if (currentCloudDoc && currentCloudDoc.root === root && currentCloudDoc.path === path) {
+      setCloudDoc(null);
+    }
+  };
+
+  // "Save": overwrite the currently-open server document with no prompt: if
+  // nothing is open yet, falls back to Save As (asks where to save), exactly
+  // like a desktop app's Save/Save As relationship.
+  app.saveCloudSmart = async function () {
+    if (!currentCloudDoc) {
+      app.startCloudSaveAs();
+      return;
+    }
+    rename();
+    try {
+      await cloudFiles.writeFile(currentCloudDoc.root, currentCloudDoc.path, currentSceneJson());
+      hasUnsavedChange = false;
+      flashStatus('Saved to ' + currentCloudDoc.path);
+    } catch (e) {
+      error = "Could not save: " + (e.message || e);
+      updateErrorAndWarning();
+    }
+  };
+
+  // "Save As…": always opens the picker, pre-filled with the current
+  // document's location (if any) so re-saving nearby is a couple of clicks.
+  app.startCloudSaveAs = function () {
+    rename();
+    var suggested = currentCloudDoc ? currentCloudDoc.name : (scene.name || 'scene') + '.json';
+    document.dispatchEvent(new CustomEvent('cloudFiles:open', {
+      detail: {
+        mode: 'save',
+        suggestedName: suggested,
+        root: currentCloudDoc ? currentCloudDoc.root : undefined,
+        folder: currentCloudDoc ? currentCloudDoc.path.split('/').slice(0, -1).join('/') : undefined,
+      },
+    }));
+  };
+
+  app.startCloudOpen = function () {
+    document.dispatchEvent(new CustomEvent('cloudFiles:open', { detail: { mode: 'open' } }));
+  };
+
+  // Called by CloudFilesModal after it writes a NEW location (Save As) —
+  // marks that location as the now-open document so subsequent "Save" calls
+  // go straight there with no picker.
+  app.saveToServer = async function (root, path) {
+    await cloudFiles.writeFile(root, path, currentSceneJson());
+    hasUnsavedChange = false;
+    setCloudDoc({ root: root, path: path, name: cloudBaseName(path) });
+    flashStatus('Saved to ' + path);
+  };
+
+  app.openFromServerText = function (fileString, fileName, root, path) {
+    var isJSON = true;
+    try {
+      var parsed = JSON.parse(fileString);
+      if (typeof parsed !== 'object' || parsed === null) {
+        isJSON = false;
+      }
+    } catch (e) {
+      isJSON = false;
+    }
+    if (!isJSON) {
+      error = "openFromServer: " + i18next.t('simulator:appErrors.invalidFile');
+      updateErrorAndWarning();
+      return;
+    }
+    editor.loadJSON(fileString);
+    hasUnsavedChange = false;
+    editor.onActionComplete();
+    jsonEditorService.updateContent(editor.lastActionJson, null, true);
+    if (root && path) {
+      setCloudDoc({ root: root, path: path, name: cloudBaseName(path) });
+      var base = cloudBaseName(path).replace(/\.json$/i, '');
+      if (base) {
+        scene.name = base;
+        rename();
+      }
+    }
   };
   app.viewGallery = function () {
     window.open(mapURL('/gallery'));
@@ -796,6 +903,7 @@ function initAppService() {
         editor.onActionComplete();
         hasUnsavedChange = false;
         jsonEditorService.updateContent(editor.lastActionJson);
+        setCloudDoc(null);  // a shared-link scene, not the server document
       }).catch(e => {
         error = "JsonUrl: " + e;
         document.getElementById('welcome').style.display = 'none';
@@ -805,6 +913,7 @@ function initAppService() {
       // The URL contains a link to a gallery item.
       openSample(window.location.hash.substr(1) + ".json");
       history.replaceState('', document.title, window.location.pathname + window.location.search);
+      setCloudDoc(null);  // a gallery sample, not the server document
     }
   };
 
@@ -838,6 +947,41 @@ var xyBox_cancelContextMenu = false;
 var hasUnsavedChange = false;
 var warning = null;
 var error = null;
+
+// The server file currently being edited (if any) — {root, path, name} or
+// null. Lets "Save" silently overwrite it (vs. "Save As", which always asks
+// where) and lets the GUI show which file is open. Cleared whenever the
+// scene stops being that document: reset(), a local disk open, or a
+// gallery/URL-hash scene load.
+var currentCloudDoc = null;
+
+function cloudBaseName(path) {
+  var parts = String(path || '').split('/');
+  return parts[parts.length - 1];
+}
+
+function setCloudDoc(doc) {
+  currentCloudDoc = doc;
+  document.dispatchEvent(new CustomEvent('cloudDoc:changed', { detail: doc }));
+}
+
+function flashStatus(text) {
+  warning = text;
+  updateErrorAndWarning();
+  setTimeout(function () {
+    if (warning === text) {
+      warning = "";
+      updateErrorAndWarning();
+    }
+  }, 2500);
+}
+
+function currentSceneJson() {
+  if (jsonEditorService.isSynced) {
+    return editor.lastActionJson;
+  }
+  return jsonEditorService.aceEditor.session.getValue();
+}
 
 
 function resetDropdownButtons() {
@@ -1262,6 +1406,7 @@ function openFile(readFile) {
       hasUnsavedChange = false;
       editor.onActionComplete();
       jsonEditorService.updateContent(editor.lastActionJson, null, true);
+      setCloudDoc(null);  // a local-disk file, not the server document anymore
     } else {
       // Load the background image file
       reader.onload = function (e) {

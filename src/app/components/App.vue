@@ -25,6 +25,7 @@
   <Footer />
   <ModuleModal />
   <SaveModal />
+  <CloudFilesModal />
   <ImportShapesModal />
   <ColorModeModal />
   <ThemeModal />
@@ -49,6 +50,7 @@ import SimulatorControls from './SimulatorControls.vue';
 import Footer from './Footer.vue';
 import ModuleModal from './ModuleModal.vue';
 import SaveModal from './SaveModal.vue';
+import CloudFilesModal from './CloudFilesModal.vue';
 import ImportShapesModal from './ImportShapesModal.vue';
 import ColorModeModal from './ColorModeModal.vue';
 import ThemeModal from './ThemeModal.vue';
@@ -67,6 +69,7 @@ export default {
     Footer,
     ModuleModal,
     SaveModal,
+    CloudFilesModal,
     ImportShapesModal,
     ColorModeModal,
     ThemeModal,
