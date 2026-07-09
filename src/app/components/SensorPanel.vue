@@ -27,10 +27,17 @@
           <span class="sensor-reading-value">{{ row.value }}</span>
         </div>
       </div>
+      <template v-if="isImageSensor">
+        <canvas ref="stripCanvas" class="sensor-strip" width="320" height="34"></canvas>
+        <div class="sensor-exposure-row">
+          <span class="sensor-reading-label">{{ $t('simulator:sceneObjs.ImageSensor.exposure') }}</span>
+          <input type="range" class="form-range sensor-exposure-range" min="-1" max="1" step="0.05" v-model.number="exposure">
+        </div>
+      </template>
       <template v-if="hasPlot">
         <canvas ref="plotCanvas" class="sensor-plot" width="320" height="130"></canvas>
         <div class="sensor-plot-caption">{{ plotCaption }}</div>
-        <button class="btn sensor-export-btn" @click="exportCsv">{{ $t('simulator:sceneObjs.Detector.exportData') }}</button>
+        <button v-if="!isImageSensor" class="btn sensor-export-btn" @click="exportCsv">{{ $t('simulator:sceneObjs.Detector.exportData') }}</button>
       </template>
     </div>
   </div>
@@ -57,6 +64,8 @@ export default {
     const selectedIndex = ref(-1)
     const collapsed = ref(false)
     const plotCanvas = ref(null)
+    const stripCanvas = ref(null)
+    const exposure = ref(0)
     // Bumped on every simulation tick to re-read the (non-reactive) scene obj.
     const refreshTick = ref(0)
 
@@ -66,7 +75,12 @@ export default {
       const obj = app.scene.objs[selectedIndex.value]
       if (!obj) return null
       const type = obj.constructor.type
-      return (type === 'Detector' || type === 'PowerMeter') ? obj : null
+      return (type === 'Detector' || type === 'PowerMeter' || type === 'ImageSensor') ? obj : null
+    })
+
+    const isImageSensor = computed(() => {
+      const obj = selectedObj.value
+      return !!(obj && obj.constructor.type === 'ImageSensor')
     })
 
     const visible = computed(() => !!selectedObj.value)
@@ -74,9 +88,7 @@ export default {
     const title = computed(() => {
       const obj = selectedObj.value
       if (!obj) return ''
-      return obj.constructor.type === 'PowerMeter'
-        ? i18next.t('main:tools.PowerMeter.title')
-        : i18next.t('main:tools.Detector.title')
+      return i18next.t('main:tools.' + obj.constructor.type + '.title')
     })
 
     const readings = computed(() => {
@@ -86,7 +98,7 @@ export default {
       const scene = app.scene
       const trunc = app.simulator ? app.simulator.totalTruncation : 0
       const pm = (v) => formatPower(scene, v, 3) + (trunc > 0 ? ' ± ' + trunc.toFixed(3) : '')
-      if (obj.constructor.type === 'PowerMeter') {
+      if (obj.constructor.type === 'PowerMeter' || obj.constructor.type === 'ImageSensor') {
         return [{ label: 'P', value: pm(obj.power) }]
       }
       const rows = [
@@ -103,16 +115,51 @@ export default {
     const hasPlot = computed(() => {
       refreshTick.value
       const obj = selectedObj.value
-      return !!(obj && obj.constructor.type === 'Detector' && obj.irradMap && obj.binData && obj.binData.length > 0)
+      if (!obj) return false
+      if (obj.constructor.type === 'Detector') {
+        return !!(obj.irradMap && obj.binData && obj.binData.length > 0)
+      }
+      if (obj.constructor.type === 'ImageSensor') {
+        return !!(obj.pixelData && obj.pixelData.length > 0)
+      }
+      return false
     })
 
     const plotCaption = computed(() => {
       const scene = app.scene
+      if (isImageSensor.value) {
+        return i18next.t('simulator:sceneObjs.ImageSensor.pixelCount') + (hasUnits(scene) ? ` (vs ${scene.unitName})` : '')
+      }
       const unit = irradianceUnit(scene)
       return unit
         ? `${i18next.t('simulator:sceneObjs.Detector.irradMap')} (${unit} vs ${scene.unitName})`
         : i18next.t('simulator:sceneObjs.Detector.irradMap')
     })
+
+    const drawStrip = () => {
+      const canvas = stripCanvas.value
+      const obj = selectedObj.value
+      if (!canvas || !obj || !isImageSensor.value || !obj.pixelData) return
+      const ctx = canvas.getContext('2d')
+      const W = canvas.width, H = canvas.height
+      ctx.fillStyle = 'black'
+      ctx.fillRect(0, 0, W, H)
+      const n = obj.pixelCount
+      let maxV = 0
+      for (let i = 0; i < obj.pixelData.length; i++) {
+        if (obj.pixelData[i] > maxV) maxV = obj.pixelData[i]
+      }
+      if (maxV <= 0) return
+      const gain = Math.pow(10, exposure.value) / maxV
+      const pw = W / n
+      for (let i = 0; i < n; i++) {
+        const r = Math.min(255, Math.round(obj.pixelData[i * 3] * gain * 255))
+        const g = Math.min(255, Math.round(obj.pixelData[i * 3 + 1] * gain * 255))
+        const b = Math.min(255, Math.round(obj.pixelData[i * 3 + 2] * gain * 255))
+        ctx.fillStyle = `rgb(${r},${g},${b})`
+        ctx.fillRect(i * pw, 0, Math.ceil(pw), H)
+      }
+    }
 
     const drawPlot = () => {
       const canvas = plotCanvas.value
@@ -124,10 +171,21 @@ export default {
       ctx.clearRect(0, 0, W, H)
 
       const us = unitSize(app.scene)
-      const bins = obj.binData
-      const binSize = obj.binSize
-      // Irradiance per unit (physical) length per bin.
-      const vals = bins.map(v => v / (binSize * us))
+      let vals, totalLen
+      if (isImageSensor.value) {
+        // Per-pixel luminance profile.
+        vals = []
+        for (let i = 0; i < obj.pixelCount; i++) {
+          vals.push((obj.pixelData[i * 3] + obj.pixelData[i * 3 + 1] + obj.pixelData[i * 3 + 2]) / 3)
+        }
+        totalLen = Math.hypot(obj.p2.x - obj.p1.x, obj.p2.y - obj.p1.y) * us
+      } else {
+        const bins = obj.binData
+        const binSize = obj.binSize
+        // Irradiance per unit (physical) length per bin.
+        vals = bins.map(v => v / (binSize * us))
+        totalLen = bins.length * binSize * us
+      }
       const maxV = Math.max(1e-12, ...vals.map(v => Math.abs(v)))
 
       // Axes
@@ -143,7 +201,7 @@ export default {
       const plotW = W - padL - padR
       const plotH = H - padT - padB
       ctx.fillStyle = 'rgba(96, 168, 255, 0.85)'
-      const bw = plotW / bins.length
+      const bw = plotW / vals.length
       for (let i = 0; i < vals.length; i++) {
         const h = Math.abs(vals[i]) / maxV * plotH
         ctx.fillRect(padL + i * bw, H - padB - h, Math.max(1, bw - 1), h)
@@ -159,7 +217,6 @@ export default {
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
       ctx.fillText('0', padL, H - padB + 3)
-      const totalLen = bins.length * binSize * us
       ctx.fillText(totalLen.toPrecision(3), W - padR - 6, H - padB + 3)
     }
 
@@ -191,8 +248,11 @@ export default {
       if (selectedIndex.value >= 0) refreshTick.value++
     }
 
-    watch([hasPlot, refreshTick, collapsed], () => {
-      nextTick(drawPlot)
+    watch([hasPlot, refreshTick, collapsed, exposure], () => {
+      nextTick(() => {
+        drawPlot()
+        drawStrip()
+      })
     })
 
     onMounted(() => {
@@ -209,7 +269,10 @@ export default {
       title,
       readings,
       hasPlot,
+      isImageSensor,
       plotCanvas,
+      stripCanvas,
+      exposure,
       plotCaption,
       exportCsv
     }
@@ -271,6 +334,24 @@ export default {
   width: 100%;
   background-color: rgba(0, 0, 0, 0.25);
   border-radius: 4px;
+}
+
+.sensor-strip {
+  width: 100%;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.sensor-exposure-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.sensor-exposure-range {
+  flex: 1;
+  padding-top: 3px;
 }
 
 .sensor-plot-caption {

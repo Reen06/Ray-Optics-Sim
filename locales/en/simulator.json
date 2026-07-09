@@ -387,6 +387,11 @@
     "PowerMeter": {
       "info": "Reads the total power P of the rays entering the circle, like a photodiode. With real units configured, P is in mW (1 brightness-unit ≡ 1 mW per unit depth). Rays pass through unchanged. Use the Compute button for converged high-precision readings."
     },
+    "ImageSensor": {
+      "info": "Accumulates the image formed on the sensor line, pixel by pixel, like a film exposure. With \"Simulate Colors\" on, pixels record real color from ray wavelengths; otherwise grayscale intensity. The exposure develops progressively — use the Compute button for a low-noise image. The strip next to the sensor uses automatic exposure; the sensor panel has an exposure slider.",
+      "pixelCount": "Pixels",
+      "exposure": "Exposure"
+    },
     "TextLabel": {
       "text": "Text",
       "textHere": "Text Here",

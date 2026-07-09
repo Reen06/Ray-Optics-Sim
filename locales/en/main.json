@@ -186,6 +186,10 @@
       "title": "Power Meter",
       "description": "A circular sensor that reads the total power of the light entering it (like a photodiode). Rays pass through unchanged."
     },
+    "ImageSensor": {
+      "title": "Image Sensor",
+      "description": "A virtual camera sensor: a line segment that accumulates the color image formed on it, like a film exposure. The developed strip is shown alongside the sensor and in the sensor panel."
+    },
     "TextLabel": {
       "title": "Text",
       "description": "A text label."

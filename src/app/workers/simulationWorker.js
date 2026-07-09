@@ -91,6 +91,13 @@ function collectDetectors(scene) {
         type,
         power: obj.power
       });
+    } else if (type === 'ImageSensor') {
+      detectors.push({
+        objIndex: i,
+        type,
+        power: obj.power,
+        pixelData: obj.pixelData ? Array.from(obj.pixelData) : null
+      });
     }
   }
   return detectors;

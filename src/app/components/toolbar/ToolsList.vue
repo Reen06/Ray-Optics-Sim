@@ -299,6 +299,13 @@
       :verticalOffset="60"
       :layout="layout"
     />
+    <ToolItem
+      id="ImageSensor"
+      :title="$t('main:tools.ImageSensor.title')"
+      :popoverContent="$t('main:meta.parentheses', {main: $t('main:tools.ImageSensor.description'), sub: $t('main:tools.common.lineInstruction')})"
+      :verticalOffset="60"
+      :layout="layout"
+    />
     <li><hr class="dropdown-divider"></li>
     <ToolItem
       id="TextLabel"

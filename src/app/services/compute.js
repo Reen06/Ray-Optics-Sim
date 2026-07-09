@@ -126,6 +126,9 @@ function applyDetectorData(msg) {
     if (!obj || obj.constructor.type !== (d.type || 'Detector')) continue;
     if (d.type === 'PowerMeter') {
       obj.power = d.power;
+    } else if (d.type === 'ImageSensor') {
+      obj.power = d.power;
+      obj.pixelData = d.pixelData;
     } else {
       obj.power = d.power;
       obj.normal = d.normal;
