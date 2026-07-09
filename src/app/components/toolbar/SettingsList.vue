@@ -89,6 +89,18 @@
 
   <Transition name="advanced-settings">
     <div v-if="shouldShowAdvancedSettings || shouldShowAdvancedByDefault" class="advanced-settings-container">
+      <div class="row settings-control-row d-flex justify-content-between align-items-center">
+        <div class="col-auto settings-label">{{ $t('simulator:keybinds.title') }}</div>
+        <div class="col-auto d-flex align-items-center">
+          <button
+            type="button"
+            class="btn shadow-none dropdown-toggle settings-popup-btn"
+            data-bs-toggle="modal"
+            data-bs-target="#keybindsModal"
+          >{{ $t('simulator:keybinds.editButton') }}</button>
+        </div>
+      </div>
+
       <PopupSelectControl
         :label="$t('simulator:settings.theme.title')"
         :value="themeStore.isDefaultTheme.value ? 'default' : 'custom'"

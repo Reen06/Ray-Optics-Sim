@@ -124,6 +124,17 @@ class Editor {
     /** @property {boolean} isConstructing - Whether an object is being constructed. */
     this.isConstructing = false;
 
+    /**
+     * @property {(e: MouseEvent) => boolean} panButtonMatcher - Predicate for
+     * the "always pan" mouse button: when it matches a mousedown, the scene
+     * pans regardless of the currently active tool (so switching off a
+     * drawing tool isn't required just to look around). Defaults to the
+     * middle mouse button; the app layer may override this with a
+     * user-configurable version (see `src/app/store/keybinds.js`) without
+     * this core module needing to depend on it.
+     */
+    this.panButtonMatcher = (e) => e.button === 1;
+
     /** @property {number} draggingObjIndex - The index of the object being dragged. -1 if no object is being dragged; -3 if the scene is being dragged; -4 if the observer is being dragged. */
     this.draggingObjIndex = -1;
 
@@ -701,7 +712,9 @@ class Editor {
     }
 
 
-    if (!((e.which && (e.which == 1 || e.which == 3)) || (e.changedTouches))) {
+    const isPanButton = !e.changedTouches && this.panButtonMatcher(e);
+
+    if (!((e.which && (e.which == 1 || e.which == 3)) || (e.changedTouches) || isPanButton)) {
       return;
     }
 
@@ -713,6 +726,18 @@ class Editor {
       this.mousePos = mousePos_nogrid;
     }
 
+    if (isPanButton) {
+      // The configurable "always pan" button (default: middle click) — pans
+      // regardless of the active tool or any in-progress construction/drag,
+      // so it never needs the current tool to be switched off.
+      this.draggingObjIndex = -3;
+      this.dragContext = {};
+      this.dragContext.mousePos0 = this.mousePos;
+      this.dragContext.mousePos1 = this.mousePos;
+      this.dragContext.mousePos2 = this.scene.origin;
+      this.dragContext.snapContext = {};
+      return;
+    }
 
     if (this.isConstructing) {
       if ((e.which && e.which == 1) || (e.changedTouches)) {

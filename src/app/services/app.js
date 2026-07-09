@@ -29,6 +29,7 @@ import i18next, { t, use } from 'i18next';
 import { jsonEditorService } from '../services/jsonEditor.js';
 import * as cloudFiles from '../services/cloudFiles.js';
 import { statusEmitter, STATUS_EVENT_NAMES } from '../composables/useStatus.js';
+import { matchesKeyEvent, matchesMouseEvent, keybindsState } from '../store/keybinds.js';
 import { mapURL, parseLinks } from '../utils/links.js';
 import { parseShapesFile } from '../utils/svgImport.js';
 import {
@@ -102,6 +103,7 @@ function initAppService() {
 
   editor = new Editor(scene, canvas, simulator);
   app.editor = editor;
+  editor.panButtonMatcher = (e) => matchesMouseEvent('pan', e);
 
   document.title = i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:project.name');
   document.getElementById('home').href = mapURL('/home');
@@ -483,8 +485,14 @@ function initAppService() {
 
 
   window.onkeydown = function (e) {
-    //Ctrl+Z or Cmd+Z
-    if ((e.ctrlKey || e.metaKey) && e.keyCode == 90) {
+    // Skip shortcut matching while the user is typing into a text input
+    // (e.g. rebinding a keybind, or entering text elsewhere) so bound keys
+    // don't fire while the keybind-capture UI is listening for its own event.
+    if (keybindsState.recording) {
+      return;
+    }
+    //Undo (default Ctrl/Cmd+Z)
+    if (matchesKeyEvent('undo', e)) {
       if (document.getElementById('undo').disabled == false) {
         if (jsonEditorService.isSynced || !jsonEditorService.aceEditor) {
           editor.undo();
@@ -495,8 +503,8 @@ function initAppService() {
       }
       return false;
     }
-    //Ctrl+D or Cmd+D
-    if ((e.ctrlKey || e.metaKey) && e.keyCode == 68) {
+    //Duplicate (default Ctrl/Cmd+D)
+    if (matchesKeyEvent('duplicate', e)) {
       if (editor.selectedObjIndex != -1) {
         if (scene.objs[editor.selectedObjIndex].constructor.type == 'Handle') {
           scene.cloneObjsByHandle(editor.selectedObjIndex);
@@ -510,8 +518,8 @@ function initAppService() {
       }
       return false;
     }
-    //Ctrl+Y or Cmd+Y
-    if ((e.ctrlKey || e.metaKey) && e.keyCode == 89) {
+    //Redo (default Ctrl/Cmd+Y)
+    if (matchesKeyEvent('redo', e)) {
       if (document.getElementById('redo').disabled == false) {
         if (jsonEditorService.isSynced || !jsonEditorService.aceEditor) {
           editor.redo();
@@ -522,20 +530,20 @@ function initAppService() {
       return false;
     }
 
-    //Ctrl+S or Cmd+S
-    if ((e.ctrlKey || e.metaKey) && e.keyCode == 83) {
+    //Save (default Ctrl/Cmd+S)
+    if (matchesKeyEvent('save', e)) {
       save();
       return false;
     }
 
-    //Ctrl+O or Cmd+O
-    if ((e.ctrlKey || e.metaKey) && e.keyCode == 79) {
+    //Open (default Ctrl/Cmd+O)
+    if (matchesKeyEvent('open', e)) {
       document.getElementById('open').onclick();
       return false;
     }
 
-    //Ctrl+A or Cmd+A
-    if ((e.ctrlKey || e.metaKey) && e.keyCode == 65) {
+    //Select all (default Ctrl/Cmd+A)
+    if (matchesKeyEvent('selectAll', e)) {
       editor.selectAll();
       return false;
     }
@@ -547,8 +555,8 @@ function initAppService() {
       }
     }
 
-    //Delete
-    if (e.keyCode == 46 || e.keyCode == 8) {
+    //Delete (default Delete key; Backspace is always also accepted as a fixed alias)
+    if (matchesKeyEvent('delete', e) || e.keyCode == 8) {
       if (editor.selectedObjIndex != -1) {
         var selectedObjType = scene.objs[editor.selectedObjIndex].constructor.type;
         editor.removeObj(editor.selectedObjIndex);
@@ -559,8 +567,8 @@ function initAppService() {
       return false;
     }
 
-    //Plus and Minus Keys for rotation
-    if (e.keyCode == 107 || e.keyCode == 187 || e.keyCode == 61) {  // + key for rotate clockwise
+    //Rotate clockwise (default '=' / '+'; Numpad+ and the alternate '=' keyCode are always also accepted as fixed aliases)
+    if (matchesKeyEvent('rotateCW', e) || e.keyCode == 107 || e.keyCode == 61) {
       if (editor.selectedObjIndex != -1) {
         scene.objs[editor.selectedObjIndex].rotate(-0.5 * Math.PI / 180);
         simulator.updateSimulation(!scene.objs[editor.selectedObjIndex].constructor.isOptical, true);
@@ -568,7 +576,8 @@ function initAppService() {
         editor.onActionComplete();
       }
     }
-    if (e.keyCode == 109 || e.keyCode == 189 || e.keyCode == 173) {  // - key for rotate c-clockwise
+    //Rotate counter-clockwise (default '-'; Numpad- and the alternate '-' keyCode are always also accepted as fixed aliases)
+    if (matchesKeyEvent('rotateCCW', e) || e.keyCode == 109 || e.keyCode == 173) {
       if (editor.selectedObjIndex != -1) {
         scene.objs[editor.selectedObjIndex].rotate(0.5 * Math.PI / 180);
         simulator.updateSimulation(!scene.objs[editor.selectedObjIndex].constructor.isOptical, true);

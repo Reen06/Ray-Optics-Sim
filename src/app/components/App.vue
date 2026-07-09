@@ -32,6 +32,7 @@
   <ColorModeModal />
   <ThemeModal />
   <LanguageModal />
+  <KeybindsModal />
 
   <input type="file" id="openfile" style="display:none">
   <input type="file" id="importShapesFile" accept=".svg,image/svg+xml" style="display:none">
@@ -59,6 +60,7 @@ import ImportShapesModal from './ImportShapesModal.vue';
 import ColorModeModal from './ColorModeModal.vue';
 import ThemeModal from './ThemeModal.vue';
 import LanguageModal from './LanguageModal.vue';
+import KeybindsModal from './KeybindsModal.vue';
 
 
 export default {
@@ -79,7 +81,8 @@ export default {
     ImportShapesModal,
     ColorModeModal,
     ThemeModal,
-    LanguageModal
+    LanguageModal,
+    KeybindsModal
   }
 }
 </script>

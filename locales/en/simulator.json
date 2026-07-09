@@ -909,5 +909,25 @@
         "contribute": "Direct contributions are also welcome (see [the contribution guide](/contributing))."
       }
     }
+  },
+  "keybinds": {
+    "title": "Keybinds",
+    "editButton": "Edit…",
+    "description": "Click a binding, then press the key or mouse button you want to use for it. Esc cancels without changing it.",
+    "resetAll": "Reset All",
+    "pressKey": "Press a key…",
+    "pressMouseButton": "Click a mouse button…",
+    "actions": {
+      "pan": "Pan (always, any tool)",
+      "undo": "Undo",
+      "redo": "Redo",
+      "duplicate": "Duplicate",
+      "save": "Save",
+      "open": "Open",
+      "selectAll": "Select All",
+      "delete": "Delete",
+      "rotateCW": "Rotate Clockwise",
+      "rotateCCW": "Rotate Counter-Clockwise"
+    }
   }
 }
