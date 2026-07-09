@@ -30,11 +30,14 @@
             <select class="form-select form-select-sm w-auto" v-model="currentRoot" @change="onRootChange" :disabled="loading">
               <option v-for="r in roots" :key="r.id" :value="r.id">{{ r.label }}</option>
             </select>
+            <button type="button" class="btn btn-sm btn-outline-secondary" title="Up one level" @click="navigateUp" :disabled="loading || pathParts.length === 0">
+              ⬆
+            </button>
             <nav class="cloud-breadcrumb flex-grow-1">
               <span class="cloud-breadcrumb-item" @click="navigateTo(0)">/</span>
               <template v-for="(seg, i) in pathParts" :key="i">
                 <span class="cloud-breadcrumb-item" @click="navigateTo(i + 1)">{{ seg }}</span>
-                <span v-if="i < pathParts.length - 1">/</span>
+                <span v-if="i < pathParts.length - 1" class="cloud-breadcrumb-sep">/</span>
               </template>
             </nav>
             <button type="button" class="btn btn-sm btn-outline-secondary" @click="createFolder" :disabled="loading">
@@ -118,17 +121,32 @@ export default {
       return selectedName.value.length > 0
     })
 
+    // Directory listings go browser -> Hub -> SM -> NAS node, so latency
+    // varies per request; without a guard, a slower response for a folder
+    // the user has already navigated away from can resolve AFTER a faster
+    // one and silently overwrite the correct listing (e.g. "go up" shows the
+    // root breadcrumb but the previous subfolder's files, because that
+    // request was still in flight and lands last). `requestSeq` lets each
+    // call to loadEntries() ignore any response that isn't the latest one.
+    let requestSeq = 0
+
     const loadEntries = async () => {
+      const seq = ++requestSeq
       loading.value = true
       error.value = ''
       selectedName.value = ''
+      const root = currentRoot.value
+      const path = currentPath.value
       try {
-        entries.value = await cloudFiles.listDir(currentRoot.value, currentPath.value)
+        const result = await cloudFiles.listDir(root, path)
+        if (seq !== requestSeq) return // a newer navigation has already started
+        entries.value = result
       } catch (e) {
+        if (seq !== requestSeq) return
         entries.value = []
         error.value = 'Could not list files: ' + e.message
       } finally {
-        loading.value = false
+        if (seq === requestSeq) loading.value = false
       }
     }
 
@@ -139,6 +157,12 @@ export default {
 
     const navigateTo = (depth) => {
       pathParts.value = pathParts.value.slice(0, depth)
+      loadEntries()
+    }
+
+    const navigateUp = () => {
+      if (pathParts.value.length === 0) return
+      pathParts.value = pathParts.value.slice(0, -1)
       loadEntries()
     }
 
@@ -284,7 +308,7 @@ export default {
     return {
       isModalOpen, mode, roots, currentRoot, pathParts, entries, loading, busy, error,
       selectedName, saveFileName, canConfirm,
-      onRootChange, navigateTo, onEntryClick, onEntryDblClick, createFolder, close, confirm,
+      onRootChange, navigateTo, navigateUp, onEntryClick, onEntryDblClick, createFolder, close, confirm,
       renameEntryPrompt, deleteEntryPrompt,
     }
   }
@@ -318,10 +342,21 @@ export default {
 
 .cloud-breadcrumb-item {
   cursor: pointer;
+  display: inline-block;
+  padding: 2px 4px;
+  border-radius: 3px;
+  min-width: 1em;
+  text-align: center;
 }
 
 .cloud-breadcrumb-item:hover {
   text-decoration: underline;
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.cloud-breadcrumb-sep {
+  padding: 0 1px;
+  opacity: 0.6;
 }
 
 .cloud-file-list {
