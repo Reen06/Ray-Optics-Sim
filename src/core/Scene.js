@@ -209,6 +209,8 @@ class Scene {
     gridSize: 20,
     observer: null,
     lengthScale: 1,
+    unitName: '',
+    unitSize: 1,
     origin: { x: 0, y: 0 },
     scale: 1,
     width: 1500,

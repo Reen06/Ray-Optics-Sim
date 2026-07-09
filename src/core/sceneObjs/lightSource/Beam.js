@@ -75,6 +75,7 @@ class Beam extends LineObjMixin(BaseSceneObj) {
     objBar.createNumber(i18next.t('simulator:sceneObjs.common.brightness'), 0.01 / this.scene.lengthScale, 1 / this.scene.lengthScale, 0.01 / this.scene.lengthScale, this.brightness, function (obj, value) {
       obj.brightness = value;
     }, brightnessInfo);
+    this.populateDimensionControls(objBar);
     if (this.scene.simulateColors) {
       objBar.createNumber(i18next.t('simulator:sceneObjs.common.wavelength') + ' (nm)', Simulator.UV_WAVELENGTH, Simulator.INFRARED_WAVELENGTH, 1, this.wavelength, function (obj, value) {
         obj.wavelength = value;

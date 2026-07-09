@@ -19,6 +19,7 @@ import LineObjMixin from '../LineObjMixin.js';
 import i18next from 'i18next';
 import Simulator from '../../Simulator.js';
 import geometry from '../../geometry.js';
+import { labelSuffix, toPhysical, fromPhysical, roundDisplay, unitSize } from '../../unitUtils.js';
 
 /**
  * Ideal curved mirror that follows the mirror equation exactly.
@@ -62,8 +63,9 @@ class IdealMirror extends LineObjMixin(BaseFilter) {
     if (localStorage && localStorage.rayOpticsCartesianSign) {
       cartesianSign = localStorage.rayOpticsCartesianSign == "true";
     }
-    objBar.createNumber(i18next.t('simulator:sceneObjs.common.focalLength'), -1000 * this.scene.lengthScale, 1000 * this.scene.lengthScale, 1 * this.scene.lengthScale, this.focalLength * (cartesianSign ? -1 : 1), function (obj, value) {
-      obj.focalLength = value * (cartesianSign ? -1 : 1);
+    const us = unitSize(this.scene);
+    objBar.createNumber(i18next.t('simulator:sceneObjs.common.focalLength') + labelSuffix(this.scene), -1000 * this.scene.lengthScale * us, 1000 * this.scene.lengthScale * us, 1 * this.scene.lengthScale * us, roundDisplay(toPhysical(this.scene, this.focalLength)) * (cartesianSign ? -1 : 1), function (obj, value) {
+      obj.focalLength = fromPhysical(obj.scene, value) * (cartesianSign ? -1 : 1);
     }, i18next.t('simulator:sceneObjs.common.lengthUnitInfo'));
     if (objBar.showAdvanced(cartesianSign)) {
       objBar.createBoolean(i18next.t('simulator:sceneObjs.IdealMirror.cartesianSign'), cartesianSign, function (obj, value) {

@@ -67,6 +67,8 @@
     :layout="layout"
   />
 
+  <RealUnitsControl :layout="layout" />
+
   <ZoomControl
     :label="$t('simulator:settings.zoom.title')"
     v-model="zoom"
@@ -210,6 +212,7 @@ import ToggleControl from './controls/ToggleControl.vue'
 import NumberControl from './controls/NumberControl.vue'
 import ZoomControl from './controls/ZoomControl.vue'
 import PopupSelectControl from './controls/PopupSelectControl.vue'
+import RealUnitsControl from './controls/RealUnitsControl.vue'
 import RayDensityBar from './RayDensityBar.vue'
 import LayoutAidsBar from './LayoutAidsBar.vue'
 import SettingsWarning from './controls/SettingsWarning.vue'
@@ -226,6 +229,7 @@ export default {
     ToggleControl,
     ZoomControl,
     PopupSelectControl,
+    RealUnitsControl,
     RayDensityBar,
     SettingsWarning,
     LayoutAidsBar

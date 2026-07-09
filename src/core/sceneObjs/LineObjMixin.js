@@ -17,6 +17,7 @@
 import geometry from '../geometry.js';
 import BaseSceneObj from './BaseSceneObj.js';
 import i18next from 'i18next';
+import { labelSuffix, toPhysical, fromPhysical, roundDisplay } from '../unitUtils.js';
 
 /**
  * The mixin for the scene objects that are defined by a line segment.
@@ -32,6 +33,49 @@ const LineObjMixin = Base => class extends Base {
       { key: 'p2', type: 'point', label: i18next.t('simulator:sceneObjs.LineObjMixin.endpoint2') },
       ...super.getPropertySchema(objData, scene),
     ];
+  }
+
+  /**
+   * Populate the object bar with CAD-style "smart dimension" controls: the
+   * exact length and angle of the line segment, shown in the scene's real
+   * units when configured. Setting the length moves `p2` along the current
+   * direction (about `p1`); setting the angle rotates `p2` about `p1`.
+   * @param {ObjBar} objBar - The object bar to be populated.
+   */
+  populateDimensionControls(objBar) {
+    if (!this.p1 || !this.p2) return;
+    const scene = this.scene;
+    const len = geometry.distance(this.p1, this.p2);
+    const angleDeg = Math.atan2(-(this.p2.y - this.p1.y), this.p2.x - this.p1.x) * 180 / Math.PI;
+
+    objBar.createNumber(i18next.t('simulator:sceneObjs.common.dimensions.length') + labelSuffix(scene), 0, 1000, 1, roundDisplay(toPhysical(scene, len)), function (obj, value) {
+      const newLen = fromPhysical(obj.scene, value);
+      if (!(newLen >= 0) || !isFinite(newLen)) return;
+      const curLen = geometry.distance(obj.p1, obj.p2);
+      let dx, dy;
+      if (curLen < 1e-9) {
+        dx = 1;
+        dy = 0;
+      } else {
+        dx = (obj.p2.x - obj.p1.x) / curLen;
+        dy = (obj.p2.y - obj.p1.y) / curLen;
+      }
+      obj.p2 = geometry.point(obj.p1.x + dx * newLen, obj.p1.y + dy * newLen);
+    }, null, true);
+
+    objBar.createNumber(i18next.t('simulator:sceneObjs.common.dimensions.angle') + ' (°)', -180, 180, 1, roundDisplay(angleDeg), function (obj, value) {
+      if (!isFinite(value)) return;
+      const curLen = geometry.distance(obj.p1, obj.p2);
+      if (curLen < 1e-9) return;
+      // Screen y grows downward; display angles are counterclockwise-positive.
+      const rad = -value * Math.PI / 180;
+      obj.p2 = geometry.point(obj.p1.x + curLen * Math.cos(rad), obj.p1.y + curLen * Math.sin(rad));
+    }, null, true);
+  }
+
+  populateObjBar(objBar) {
+    this.populateDimensionControls(objBar);
+    super.populateObjBar(objBar);
   }
 
   move(diffX, diffY) {

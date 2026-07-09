@@ -18,6 +18,7 @@ import BaseSceneObj from '../BaseSceneObj.js';
 import LineObjMixin from '../LineObjMixin.js';
 import i18next from 'i18next';
 import geometry from '../../geometry.js';
+import { labelSuffix, toPhysical, fromPhysical, roundDisplay, unitSize } from '../../unitUtils.js';
 
 /**
  * Ideal lens
@@ -52,9 +53,11 @@ class IdealLens extends LineObjMixin(BaseSceneObj) {
 
   populateObjBar(objBar) {
     objBar.setTitle(i18next.t('main:tools.IdealLens.title'));
-    objBar.createNumber(i18next.t('simulator:sceneObjs.common.focalLength'), -1000 * this.scene.lengthScale, 1000 * this.scene.lengthScale, 1 * this.scene.lengthScale, this.focalLength, function (obj, value) {
-      obj.focalLength = value;
+    const us = unitSize(this.scene);
+    objBar.createNumber(i18next.t('simulator:sceneObjs.common.focalLength') + labelSuffix(this.scene), -1000 * this.scene.lengthScale * us, 1000 * this.scene.lengthScale * us, 1 * this.scene.lengthScale * us, roundDisplay(toPhysical(this.scene, this.focalLength)), function (obj, value) {
+      obj.focalLength = fromPhysical(obj.scene, value);
     }, i18next.t('simulator:sceneObjs.common.lengthUnitInfo'));
+    this.populateDimensionControls(objBar);
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {

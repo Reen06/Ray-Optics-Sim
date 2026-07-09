@@ -8,6 +8,7 @@
     "saveButton": "Save",
     "cancelButton": "Cancel",
     "defaultOption": "Default",
+    "noneOption": "None",
     "legacyOption": "Legacy",
     "customOption": "Custom",
     "closeButton": "Close",
@@ -78,6 +79,11 @@
     "lengthScale": {
       "title": "Length Scale",
       "description": "If the default unit of length is too small or too large to model a physical system when interpreted as a common physical unit (e.g. millimeters), this factor can be used to scale the appearance (e.g. line widths) in the scene."
+    },
+    "realUnits": {
+      "title": "Real Units",
+      "unitSize": "1 unit ({{unit}})",
+      "description": "Give the scene real-world units: one canvas unit equals the chosen physical length. Rulers, dimensions, and detector readings then display in real units (power readings use the convention 1 brightness-unit = 1 mW per unit depth). Leave as None for the classic unitless behavior."
     },
     "zoom": {
       "title": "Zoom"
@@ -191,7 +197,11 @@
       },
       "pointN": "Point {{i}}",
       "imageDetectionWarning": "This component does not support image detection.",
-      "nonSimulateColorsWarning": "This component only works when \"Simulate Colors\" is on."
+      "nonSimulateColorsWarning": "This component only works when \"Simulate Colors\" is on.",
+      "dimensions": {
+        "length": "Length",
+        "angle": "Angle"
+      }
     },
     "LineObjMixin": {
       "endpoint1": "1st endpoint",

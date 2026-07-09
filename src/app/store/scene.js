@@ -78,6 +78,13 @@ const PROPERTY_CALLBACKS = {
   lengthScale: (value) => {
     app.simulator?.updateSimulation(false, false)
   },
+  unitName: (value) => {
+    // Redraw objects so rulers/detectors show the new unit labels.
+    app.simulator?.updateSimulation(true, true)
+  },
+  unitSize: (value) => {
+    app.simulator?.updateSimulation(true, true)
+  },
   scale: (value) => {
     app.simulator?.updateSimulation(false, false)
   },

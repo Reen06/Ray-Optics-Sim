@@ -18,6 +18,7 @@ import BaseSceneObj from '../BaseSceneObj.js';
 import LineObjMixin from '../LineObjMixin.js';
 import i18next from 'i18next';
 import geometry from '../../geometry.js';
+import { hasUnits, toPhysical, unitSize } from '../../unitUtils.js';
 
 /**
  * The detector tool
@@ -83,6 +84,8 @@ class Detector extends LineObjMixin(BaseSceneObj) {
       obj.twoSided = value;
     });
 
+    this.populateDimensionControls(objBar);
+
     objBar.createBoolean(i18next.t('simulator:sceneObjs.Detector.irradMap'), this.irradMap, function (obj, value) {
       obj.irradMap = value;
     }, null, true);
@@ -101,12 +104,19 @@ class Detector extends LineObjMixin(BaseSceneObj) {
         var binData = obj.binData;
         var csv = "data:text/csv;charset=utf-8,";
 
-        // Write the header
-        csv += "Position,Irradiance\n";
+        // Write the header (positions in real units when configured; irradiance
+        // is power per unit length, with 1 brightness-unit ≡ 1 mW)
+        const scene = obj.scene;
+        if (hasUnits(scene)) {
+          csv += `Position (${scene.unitName}),Irradiance (mW/${scene.unitName})\n`;
+        } else {
+          csv += "Position,Irradiance\n";
+        }
 
         // Write the data
+        const us = unitSize(scene);
         for (var i = 0; i < binNum; i++) {
-          csv += i * binSize + "," + (binData[i] / binSize) + "\n";
+          csv += (i * binSize * us) + "," + (binData[i] / (binSize * us)) + "\n";
         }
         var encodedUri = encodeURI(csv);
 
@@ -166,13 +176,16 @@ class Detector extends LineObjMixin(BaseSceneObj) {
       ctx.globalCompositeOperation = 'lighter';
       var len = Math.sqrt((this.p2.x - this.p1.x) * (this.p2.x - this.p1.x) + (this.p2.y - this.p1.y) * (this.p2.y - this.p1.y));
 
+      // With real units configured, power readings display as mW
+      // (1 brightness-unit ≡ 1 mW per unit depth).
+      const pUnit = hasUnits(this.scene) ? ' mW' : '';
       var accuracy = Math.max(-Math.floor(Math.log10(this.scene.simulator.totalTruncation)), 0);
       if (this.scene.simulator.totalTruncation > 0 && accuracy <= 2) {
-        var str1 = "P=" + this.power.toFixed(accuracy) + "±" + this.scene.simulator.totalTruncation.toFixed(accuracy);
+        var str1 = "P=" + this.power.toFixed(accuracy) + "±" + this.scene.simulator.totalTruncation.toFixed(accuracy) + pUnit;
         var str2 = "F⊥=" + this.normal.toFixed(accuracy) + "±" + this.scene.simulator.totalTruncation.toFixed(accuracy);
         var str3 = "F∥=" + this.shear.toFixed(accuracy) + "±" + this.scene.simulator.totalTruncation.toFixed(accuracy);
       } else {
-        var str1 = "P=" + this.power.toFixed(2);
+        var str1 = "P=" + this.power.toFixed(2) + pUnit;
         var str2 = "F⊥=" + this.normal.toFixed(2);
         var str3 = "F∥=" + this.shear.toFixed(2);
       }

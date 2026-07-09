@@ -17,6 +17,7 @@
 import BaseSceneObj from '../BaseSceneObj.js';
 import LineObjMixin from '../LineObjMixin.js';
 import i18next from 'i18next';
+import { hasUnits, unitSize, roundDisplay } from '../../unitUtils.js';
 
 /**
  * The ruler tool
@@ -54,6 +55,7 @@ class Ruler extends LineObjMixin(BaseSceneObj) {
     objBar.createNumber(i18next.t('simulator:sceneObjs.Ruler.scaleInterval'), 0, 10, 1, this.scaleInterval, function (obj, value) {
       obj.scaleInterval = value;
     }, i18next.t('simulator:sceneObjs.common.lengthUnitInfo'), true);
+    this.populateDimensionControls(objBar);
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {
@@ -135,7 +137,14 @@ class Ruler extends LineObjMixin(BaseSceneObj) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(text_ang);
-        ctx.fillText(i, 0, 0);
+        // Tick labels are in the scene's real units when configured; the zero
+        // tick carries the unit name.
+        if (hasUnits(this.scene)) {
+          const tick = roundDisplay(i * unitSize(this.scene));
+          ctx.fillText(i == 0 ? `0 ${this.scene.unitName}` : tick, 0, 0);
+        } else {
+          ctx.fillText(i, 0, 0);
+        }
         ctx.restore();
       } else if (i % scale_step_mid == 0) {
         ctx.lineTo(this.p1.x + i * par_x + scale_direction * scale_len_mid * per_x, this.p1.y + i * par_y + scale_direction * scale_len_mid * per_y);
