@@ -139,8 +139,15 @@ import { computed, toRef } from 'vue'
 import { app } from '../../services/app.js'
 import { computeState } from '../../services/compute.js'
 
-/** Target alpha for the brightest ray after "Auto Fit" -- comfortably visible without fully saturating (leaves room to still see relative brightness between rays). */
-const AUTO_FIT_TARGET_ALPHA = 0.9
+/**
+ * Target alpha for the brightest ray after "Auto Fit". Deliberately well
+ * under fully opaque: with the additive ('lighter') blending this renderer
+ * uses, overlapping rays near a source (or the source's own draw marker)
+ * stack brighter than a single ray's alpha alone, so 0.9 read as blown-out/
+ * "way too bright" in practice -- 0.35 leaves comfortable headroom for that
+ * stacking while still making the brightest ray clearly visible.
+ */
+const AUTO_FIT_TARGET_ALPHA = 0.35
 
 export default {
   name: 'BrightnessGainBar',
