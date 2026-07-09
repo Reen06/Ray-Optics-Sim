@@ -33,6 +33,14 @@
         <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5 5 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z"/>
       </svg>
     </button>
+    <button class="btn-simulator-controls" id="fit_to_screen" :style="unselectedIconStyle" v-tooltip-popover="{ title: $t('simulator:simulatorControls.fitToScreen.title') }" @click="handleFitToScreen">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="2,5.5 2,2 5.5,2" />
+        <polyline points="10.5,2 14,2 14,5.5" />
+        <polyline points="14,10.5 14,14 10.5,14" />
+        <polyline points="5.5,14 2,14 2,10.5" />
+      </svg>
+    </button>
   </div>
 </template>
 
@@ -129,6 +137,11 @@ export default {
       }
     }
 
+    const handleFitToScreen = (event) => {
+      event.target.blur()
+      app.editor?.fitToScreen()
+    }
+
     return {
       isSimulatorRunning,
       isAutoRefreshEnabled,
@@ -138,7 +151,8 @@ export default {
       autoRefreshIconStyle,
       handleRefreshScene,
       handleRefreshSimulation,
-      handleAutoRefresh
+      handleAutoRefresh,
+      handleFitToScreen
     }
   }
 }

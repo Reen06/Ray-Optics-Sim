@@ -93,7 +93,12 @@ export default {
     const tooltipType = computed(() => help.value ? 'popover' : null)
 
     const displayValue = computed(() => {
-      return Math.round(props.modelValue * 100) + '%'
+      const pct = props.modelValue * 100
+      // Rounding to a whole percent reads as "0%" (looks broken) once the
+      // near-unbounded zoom range is pushed far out; show more precision
+      // for small values instead.
+      if (pct > 0 && pct < 1) return pct.toPrecision(2) + '%'
+      return Math.round(pct) + '%'
     })
 
     const handlePlus = (e) => {

@@ -843,6 +843,9 @@
     },
     "autoRefresh": {
       "title": "Auto Refresh"
+    },
+    "fitToScreen": {
+      "title": "Fit to Screen"
     }
   },
   "computeBar": {

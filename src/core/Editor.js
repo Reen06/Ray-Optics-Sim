@@ -78,6 +78,17 @@ class Editor {
   static UNDO_INTERVAL = 250;
 
   /**
+   * The lower/upper bound on `scene.scale * scene.lengthScale` (displayed
+   * zoom percentage / 100) enforced by the wheel/pinch zoom gestures. Wide
+   * enough to be effectively unbounded for real use while still guarding
+   * against scale reaching exactly 0 (which breaks every `/ scene.scale`
+   * division used for screen<->scene coordinate conversion) or absurd
+   * magnitudes that would just show a blank canvas either way.
+   */
+  static MIN_SCALE = 0.0001;
+  static MAX_SCALE = 10000;
+
+  /**
    * Create a new Editor instance.
    * @param {Scene} scene - The scene to be edited and simulated.
    * @param {HTMLCanvasElement} canvas - The top-layered canvas for user interaction.
@@ -478,7 +489,7 @@ class Editor {
       }
       
       // Clamp scale between min and max values
-      newScale = Math.max(0.25, Math.min(5.00, newScale));
+      newScale = Math.max(Editor.MIN_SCALE, Math.min(Editor.MAX_SCALE, newScale));
       
       // Convert to percentage scale
       const finalScale = newScale * 100;
@@ -566,7 +577,7 @@ class Editor {
         // Update scale based on previous scale and scaling factor
         let newScale = lastScale * scaleFactor;
 
-        newScale = Math.max(0.25 / self.scene.lengthScale, Math.min(5.00 / self.scene.lengthScale, newScale));
+        newScale = Math.max(Editor.MIN_SCALE / self.scene.lengthScale, Math.min(Editor.MAX_SCALE / self.scene.lengthScale, newScale));
 
         // Calculate the mid point between the two touches
         const x = (e.touches[0].pageX + e.touches[1].pageX) / 2;
@@ -1402,8 +1413,87 @@ class Editor {
   setScaleWithCenter(value, centerX, centerY) {
     this.scene.setScaleWithCenter(value, centerX, centerY);
     this.emit('scaleChange');
-    
+
     this.simulator.updateSimulation();
+  }
+
+  /**
+   * Compute the bounding box (in scene coordinates) of every point found in
+   * `scene.objs`, without hardcoding per-object-type property names: each
+   * object's own enumerable properties are scanned for `{x, y}`-shaped
+   * values (covers `p1`/`p2`/`p3`/`p4`) and arrays of such values (covers
+   * `path`), plus a direct `x`/`y` pair on the object itself (covers
+   * PointSource/TextLabel/AngleSource-style objects). This intentionally
+   * doesn't special-case every scene object class, so newly added object
+   * types are picked up automatically as long as they follow this
+   * project-wide point convention.
+   * @returns {{minX:number,minY:number,maxX:number,maxY:number}|null} The
+   * bounding box, or null if the scene has no objects with any points.
+   */
+  getSceneBoundingBox() {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const consider = (x, y) => {
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    };
+    for (const obj of this.scene.objs) {
+      if (!obj) continue;
+      if (typeof obj.x === 'number' && typeof obj.y === 'number') {
+        consider(obj.x, obj.y);
+      }
+      for (const key of Object.keys(obj)) {
+        if (key === 'scene') continue; // avoid walking back up to the Scene (circular)
+        const v = obj[key];
+        if (!v || typeof v !== 'object') continue;
+        if (typeof v.x === 'number' && typeof v.y === 'number') {
+          consider(v.x, v.y);
+        } else if (Array.isArray(v)) {
+          for (const item of v) {
+            if (item && typeof item.x === 'number' && typeof item.y === 'number') {
+              consider(item.x, item.y);
+            }
+          }
+        }
+      }
+    }
+    if (minX > maxX) return null;
+    return { minX, minY, maxX, maxY };
+  }
+
+  /**
+   * Fit the view to show every object in the scene (with a margin), so the
+   * user can always get back to a sane view after zooming/panning around —
+   * pairs with the wide (near-unbounded) zoom range so free zooming doesn't
+   * risk getting lost.
+   */
+  fitToScreen() {
+    const box = this.getSceneBoundingBox();
+    let scale, centerX, centerY;
+    if (box) {
+      const bboxW = Math.max(1e-6, box.maxX - box.minX);
+      const bboxH = Math.max(1e-6, box.maxY - box.minY);
+      const margin = 0.85; // leave breathing room around the content
+      scale = Math.min(this.scene.width / bboxW, this.scene.height / bboxH) * margin;
+      scale = Math.max(Editor.MIN_SCALE / this.scene.lengthScale, Math.min(Editor.MAX_SCALE / this.scene.lengthScale, scale));
+      centerX = (box.minX + box.maxX) / 2;
+      centerY = (box.minY + box.maxY) / 2;
+    } else {
+      // No objects (or none with points found): fall back to a default,
+      // centered, 100% view rather than doing nothing.
+      scale = 1 / this.scene.lengthScale;
+      centerX = 0;
+      centerY = 0;
+    }
+    this.scene.scale = scale;
+    this.scene.origin.x = this.scene.width / 2 - centerX * scale;
+    this.scene.origin.y = this.scene.height / 2 - centerY * scale;
+    this.emit('scaleChange');
+    this.simulator.updateSimulation();
+    this.onActionComplete();
   }
 
   /**
