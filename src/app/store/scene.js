@@ -101,6 +101,9 @@ const PROPERTY_CALLBACKS = {
     // Redraw objects so light source/detector/power meter readouts show the new unit.
     app.simulator?.updateSimulation(true, true)
   },
+  brightnessGain: (value) => {
+    app.simulator?.updateSimulation(false, true)
+  },
   scale: (value) => {
     app.simulator?.updateSimulation(false, false)
   },

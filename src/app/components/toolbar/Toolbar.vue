@@ -23,6 +23,7 @@
         <ToolsBar layout="desktop" />
         <ViewBar layout="desktop" />
         <RayDensityBar layout="desktop" />
+        <BrightnessGainBar layout="desktop" />
         <LayoutAidsBar layout="desktop" />
         <SettingsBar layout="desktop" />
       </div>
@@ -62,6 +63,7 @@ import ToolsBar from './ToolsBar.vue';
 import ViewBar from './ViewBar.vue';
 import SettingsBar from './SettingsBar.vue';
 import RayDensityBar from './RayDensityBar.vue';
+import BrightnessGainBar from './BrightnessGainBar.vue';
 import LayoutAidsBar from './LayoutAidsBar.vue';
 import * as $ from 'jquery';
 import { app } from '../../services/app.js'
@@ -90,6 +92,7 @@ export default {
     ViewBar,
     SettingsBar,
     RayDensityBar,
+    BrightnessGainBar,
     LayoutAidsBar
   },
   setup() {

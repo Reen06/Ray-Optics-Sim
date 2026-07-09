@@ -56,6 +56,10 @@
       "title": "Ray Density",
       "description": "Determines the number of rays to be emitted by beams and point sources. This also affects the accuracy of image detection and color rendering."
     },
+    "brightnessGain": {
+      "title": "Brightness Gain",
+      "description": "A viewing exposure control, like a camera's gain: scales how bright rays are drawn on screen only. It never changes the actual brightness/power values on light sources, so detector, power meter, and image sensor readings are unaffected -- use it to bring a scene calibrated to real physical units (e.g. a 20 mW LED) into a comfortable viewing brightness without changing the physics."
+    },
     "layoutAids": {
       "title": "Layout Aids",
       "showGrid": "Grid",

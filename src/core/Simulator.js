@@ -595,8 +595,14 @@ class Simulator {
   processRays() {
     this.simulationTimerId = -1;
     var st_time = new Date();
-    var alpha0 = 1;
-    
+    // A pure viewing exposure/gain control (Settings -> Brightness Gain):
+    // scales how bright rays are DRAWN only. It has no effect on
+    // brightness_s/brightness_p themselves, so detector/power meter/image
+    // sensor readings (which read those directly) are never affected --
+    // only what's visually comfortable to look at, independent of how the
+    // scene's real physical power values happen to be calibrated.
+    var alpha0 = (this.scene.brightnessGain > 0 && isFinite(this.scene.brightnessGain)) ? this.scene.brightnessGain : 1;
+
     // Only set canvas properties if we have a canvas to draw on
     if (this.ctxMain) {
       this.ctxMain.globalAlpha = alpha0;

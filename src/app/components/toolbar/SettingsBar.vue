@@ -28,6 +28,7 @@
           <div class="dropdown-menu" id="more-options-dropdown" aria-labelledby="optionsDropdown">
             <div class="container">
               <RayDensityBar layout="tablet" />
+              <BrightnessGainBar layout="tablet" />
               <LayoutAidsBar layout="tablet" />
               <SettingsList layout="desktop" />
             </div>
@@ -51,6 +52,7 @@
       <div id="mobile-dropdown-options" class="mobile-dropdown">
         <div class="container" style="padding-bottom: 15px;">
           <RayDensityBar layout="mobile" />
+          <BrightnessGainBar layout="mobile" />
           <LayoutAidsBar layout="mobile" />
           <SettingsList layout="mobile" />
         </div>
@@ -67,6 +69,7 @@
  */
 import { vTooltipPopover } from '../../directives/tooltip-popover'
 import RayDensityBar from './RayDensityBar.vue'
+import BrightnessGainBar from './BrightnessGainBar.vue'
 import LayoutAidsBar from './LayoutAidsBar.vue'
 import SettingsList from './SettingsList.vue'
 
@@ -74,6 +77,7 @@ export default {
   name: 'SettingsBar',
   components: {
     RayDensityBar,
+    BrightnessGainBar,
     LayoutAidsBar,
     SettingsList
   },
