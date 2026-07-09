@@ -30,6 +30,7 @@ import i18next from 'i18next'
 import HttpBackend from 'i18next-http-backend'
 import { mapURL, parseLinks } from './utils/links.js'
 import { app } from './services/app'
+import { initComputeService } from './services/compute'
 
 const isDevelopment = process.env.NODE_ENV === 'development'
 
@@ -85,6 +86,9 @@ async function initApp() {
 
   // Initialize the app service (this must be done after the Vue app is mounted, since it accesses the Vue app's DOM)
   app.initAppService()
+
+  // Initialize the snapshot-compute service (needs app.simulator from initAppService)
+  initComputeService()
 
 }
 

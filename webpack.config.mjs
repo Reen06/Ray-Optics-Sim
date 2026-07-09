@@ -28,6 +28,7 @@ export default (env, argv) => {
     entry: './src/app/main.js',
     output: {
       filename: 'simulator/main.js',
+      chunkFilename: 'simulator/[name].js',
       path: path.resolve('dist'),
       assetModuleFilename: (pathData) => {
         const filepath = path.dirname(pathData.filename).split('/').slice(1).join('/');

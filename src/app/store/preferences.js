@@ -27,6 +27,7 @@ const PREFERENCES_DEFAULTS = {
   showStatus: false,
   showSimulatorControls: false,
   help: true,
+  snapshotDetail: 1,
 }
 
 // Callbacks for preference changes
