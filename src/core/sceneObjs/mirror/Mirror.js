@@ -19,6 +19,7 @@ import LineObjMixin from '../LineObjMixin.js';
 import i18next from 'i18next';
 import Simulator from '../../Simulator.js';
 import geometry from '../../geometry.js';
+import { applyMirrorScattering, populateScatteringControls } from '../../scatterUtils.js';
 
 /**
  * Mirror with shape of a line segment.
@@ -44,7 +45,10 @@ class Mirror extends LineObjMixin(BaseFilter) {
     filter: false,
     invert: false,
     wavelength: Simulator.GREEN_WAVELENGTH,
-    bandwidth: 10
+    bandwidth: 10,
+    roughness: 0,
+    diffuse: 0,
+    albedo: 1
   };
 
   static getDescription(objData, scene, detailed = false) {
@@ -60,6 +64,7 @@ class Mirror extends LineObjMixin(BaseFilter) {
   populateObjBar(objBar) {
     objBar.setTitle(i18next.t('main:meta.parentheses', { main: i18next.t('main:tools.categories.mirror'), sub: i18next.t('main:tools.Mirror.title') }));
     super.populateObjBar(objBar);
+    populateScatteringControls(this, objBar);
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {
@@ -97,6 +102,8 @@ class Mirror extends LineObjMixin(BaseFilter) {
 
     ray.p1 = incidentPoint;
     ray.p2 = geometry.point(incidentPoint.x + rx * (my * my - mx * mx) - 2 * ry * mx * my, incidentPoint.y + ry * (mx * mx - my * my) - 2 * rx * mx * my);
+
+    return applyMirrorScattering(this, ray, { x: -rx, y: -ry });
   }
 };
 

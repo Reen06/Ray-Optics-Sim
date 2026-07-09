@@ -25,6 +25,7 @@ import escapeHtml from 'escape-html';
 import { Bezier } from 'bezier-js';
 import * as math from 'mathjs';
 import { curveTypePropertyInfoHtml } from '../ParamCurveObjMixin.js';
+import { applyMirrorScattering, populateScatteringControls } from '../../scatterUtils.js';
 
 function compileEquationDerivative(eqnLatex) {
   const p = latexToMathJS(eqnLatex);
@@ -65,7 +66,10 @@ class CustomMirror extends LineObjMixin(BaseFilter) {
     filter: false,
     invert: false,
     wavelength: Simulator.GREEN_WAVELENGTH,
-    bandwidth: 10
+    bandwidth: 10,
+    roughness: 0,
+    diffuse: 0,
+    albedo: 1
   };
 
   static getDescription(objData, scene, detailed = false) {
@@ -140,6 +144,7 @@ class CustomMirror extends LineObjMixin(BaseFilter) {
     }
 
     super.populateObjBar(objBar);
+    populateScatteringControls(this, objBar);
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {
@@ -360,10 +365,18 @@ class CustomMirror extends LineObjMixin(BaseFilter) {
   }
 
   onRayIncident(ray, rayIndex, incidentPoint) {
+    const inDir = { x: incidentPoint.x - ray.p1.x, y: incidentPoint.y - ray.p1.y };
+    let ret;
     if (this.curveType === 'cubicBezier') {
-      return this.onRayIncidentBezier(ray, rayIndex, incidentPoint);
+      ret = this.onRayIncidentBezier(ray, rayIndex, incidentPoint);
+    } else {
+      ret = this.onRayIncidentLinear(ray, incidentPoint, this.curveType === 'smoothNormal');
     }
-    return this.onRayIncidentLinear(ray, incidentPoint, this.curveType === 'smoothNormal');
+    if (!ret || !ret.isAbsorbed) {
+      const scatterRet = applyMirrorScattering(this, ray, inDir);
+      if (scatterRet) return scatterRet;
+    }
+    return ret;
   }
 
   onRayIncidentLinear(ray, incidentPoint, smoothNormals) {

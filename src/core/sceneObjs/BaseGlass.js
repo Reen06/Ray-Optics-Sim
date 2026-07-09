@@ -17,6 +17,7 @@
 import BaseSceneObj from './BaseSceneObj.js';
 import i18next from 'i18next';
 import geometry from '../geometry.js';
+import { perturbGlassNormal } from '../scatterUtils.js';
 
 /**
  * The base class for glasses.
@@ -51,10 +52,15 @@ class BaseGlass extends BaseSceneObj {
       }, '<p>*' + i18next.t('simulator:sceneObjs.BaseGlass.refIndexInfo.relative') + '</p><p>' + i18next.t('simulator:sceneObjs.BaseGlass.refIndexInfo.effective') + '</p>');
     }
 
-    if (objBar.showAdvanced(!this.arePropertiesDefault(['partialReflect']))) {
+    if (objBar.showAdvanced(!this.arePropertiesDefault(['partialReflect']) || this.roughness > 0)) {
       objBar.createBoolean(i18next.t('simulator:sceneObjs.BaseGlass.partialReflect'), this.partialReflect, function (obj, value) {
         obj.partialReflect = value;
       });
+      if ('roughness' in this.constructor.serializableDefaults) {
+        objBar.createNumber(i18next.t('simulator:sceneObjs.common.scattering.roughness') + ' (°)', 0, 45, 1, this.roughness || 0, function (obj, value) {
+          obj.roughness = Math.max(0, value);
+        }, i18next.t('simulator:sceneObjs.common.scattering.info'));
+      }
     }
   }
 
@@ -159,6 +165,12 @@ class BaseGlass extends BaseSceneObj {
    * @returns {SimulationReturn} The return value for `onRayIncident`.
    */
   refract(ray, rayIndex, incidentPoint, normal, n1, surfaceMergingObjs, bodyMergingObj) {
+
+    // Rough ("ground glass") interface: perturb the surface normal so both
+    // the Fresnel-reflected and refracted rays scatter.
+    if (this.roughness > 0) {
+      normal = perturbGlassNormal(this.scene, this.roughness, normal);
+    }
 
     // Surface merging
     for (var i = 0; i < surfaceMergingObjs.length; i++) {

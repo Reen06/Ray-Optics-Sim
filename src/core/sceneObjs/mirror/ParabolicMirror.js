@@ -18,6 +18,7 @@ import BaseFilter from '../BaseFilter.js';
 import i18next from 'i18next';
 import Simulator from '../../Simulator.js';
 import geometry from '../../geometry.js';
+import { applyMirrorScattering, populateScatteringControls } from '../../scatterUtils.js';
 
 /**
  * Parabolic mirror.
@@ -49,7 +50,10 @@ class ParabolicMirror extends BaseFilter {
     filter: false,
     invert: false,
     wavelength: Simulator.GREEN_WAVELENGTH,
-    bandwidth: 10
+    bandwidth: 10,
+    roughness: 0,
+    diffuse: 0,
+    albedo: 1
   };
 
   static getDescription(objData, scene, detailed = false) {
@@ -114,6 +118,7 @@ class ParabolicMirror extends BaseFilter {
     }
 
     super.populateObjBar(objBar);
+    populateScatteringControls(this, objBar);
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {
@@ -552,6 +557,8 @@ class ParabolicMirror extends BaseFilter {
   }
 
   onRayIncident(ray, rayIndex, incidentPoint) {
+    const inDir = { x: incidentPoint.x - ray.p1.x, y: incidentPoint.y - ray.p1.y };
+
     // Handle degenerate case (linear mirror)
     if (this.isDegenerate()) {
       const dir = [(this.p2.x - this.p1.x), (this.p2.y - this.p1.y)];
@@ -576,7 +583,7 @@ class ParabolicMirror extends BaseFilter {
         incidentPoint.x + rx,
         incidentPoint.y + ry
       );
-      return;
+      return applyMirrorScattering(this, ray, inDir);
     }
 
     // Normal parabolic case
@@ -613,6 +620,8 @@ class ParabolicMirror extends BaseFilter {
       y: incidentLocal.y + ry
     });
     ray.p2 = reflectedPoint;
+
+    return applyMirrorScattering(this, ray, inDir);
   }
 
 };

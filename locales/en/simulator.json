@@ -201,6 +201,13 @@
       "dimensions": {
         "length": "Length",
         "angle": "Angle"
+      },
+      "scattering": {
+        "roughness": "Roughness",
+        "diffuse": "Diffuseness",
+        "albedo": "Albedo",
+        "info": "Monte-Carlo surface scattering. Roughness is the Gaussian angular spread (in degrees) of the specular lobe; Diffuseness is the probability that a ray scatters Lambertian (matte) instead of specularly; Albedo is the fraction of power that leaves the surface (the rest is absorbed). One outgoing ray is sampled per incident ray, so results are noisy at low ray counts — use the Compute button for converged results. Set a random seed in the scene JSON for exactly reproducible numbers.",
+        "albedoBlockerInfo": "With albedo 0 (default) the blocker absorbs all light. With a higher albedo it becomes a matte (Lambertian) wall that diffusely re-emits that fraction of the incident power. Results are noisy at low ray counts — use the Compute button for converged results."
       }
     },
     "LineObjMixin": {

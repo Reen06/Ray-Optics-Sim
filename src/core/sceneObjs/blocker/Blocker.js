@@ -18,6 +18,7 @@ import BaseFilter from '../BaseFilter.js';
 import LineObjMixin from '../LineObjMixin.js';
 import i18next from 'i18next';
 import Simulator from '../../Simulator.js';
+import { applyBlockerScattering, populateScatteringControls } from '../../scatterUtils.js';
 
 /**
  * Line blocker / filter.
@@ -43,7 +44,8 @@ class Blocker extends LineObjMixin(BaseFilter) {
     filter: false,
     invert: false,
     wavelength: Simulator.GREEN_WAVELENGTH,
-    bandwidth: 10
+    bandwidth: 10,
+    albedo: 0
   };
 
   static getDescription(objData, scene, detailed = false) {
@@ -59,6 +61,7 @@ class Blocker extends LineObjMixin(BaseFilter) {
   populateObjBar(objBar) {
     objBar.setTitle(i18next.t('main:tools.Blocker.title'));
     super.populateObjBar(objBar);
+    populateScatteringControls(this, objBar, { includeDiffuse: false, blockerMode: true });
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {
@@ -91,9 +94,8 @@ class Blocker extends LineObjMixin(BaseFilter) {
   }
 
   onRayIncident(ray, rayIndex, incidentPoint) {
-    return {
-      isAbsorbed: true
-    };
+    // With a nonzero albedo the blocker is a matte (Lambertian) wall.
+    return applyBlockerScattering(this, ray, incidentPoint, { x: this.p2.x - this.p1.x, y: this.p2.y - this.p1.y });
   }
 };
 

@@ -40,7 +40,8 @@ class CircleGlass extends CircleObjMixin(BaseGlass) {
     p2: null,
     refIndex: 1.5,
     cauchyB: 0.004,
-    partialReflect: true
+    partialReflect: true,
+    roughness: 0
   };
 
   static getDescription(objData, scene, detailed = false) {

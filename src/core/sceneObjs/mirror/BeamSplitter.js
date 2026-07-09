@@ -19,6 +19,7 @@ import LineObjMixin from '../LineObjMixin.js';
 import i18next from 'i18next';
 import Simulator from '../../Simulator.js';
 import geometry from '../../geometry.js';
+import { scatterRayDirection, populateScatteringControls } from '../../scatterUtils.js';
 
 /**
  * Beam splitter.
@@ -45,7 +46,10 @@ class BeamSplitter extends LineObjMixin(BaseFilter) {
     filter: false,
     invert: false,
     wavelength: Simulator.GREEN_WAVELENGTH,
-    bandwidth: 10
+    bandwidth: 10,
+    roughness: 0,
+    diffuse: 0,
+    albedo: 1
   };
 
   static getDescription(objData, scene, detailed = false) {
@@ -66,6 +70,7 @@ class BeamSplitter extends LineObjMixin(BaseFilter) {
     });
 
     super.populateObjBar(objBar);
+    populateScatteringControls(this, objBar);
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {
@@ -120,6 +125,20 @@ class BeamSplitter extends LineObjMixin(BaseFilter) {
     ray2.wavelength = ray.wavelength;
     ray.brightness_s *= (1 - transmission);
     ray.brightness_p *= (1 - transmission);
+
+    if (!this.scene.disableScattering) {
+      // Albedo applies to both branches (absorption in the splitter);
+      // roughness/diffuse scatter the reflected branch.
+      const albedo = this.albedo == null ? 1 : this.albedo;
+      if (albedo < 1) {
+        ray.brightness_s *= albedo;
+        ray.brightness_p *= albedo;
+        ray2.brightness_s *= albedo;
+        ray2.brightness_p *= albedo;
+      }
+      scatterRayDirection(this, ray, { x: -rx, y: -ry });
+    }
+
     if (ray2.brightness_s + ray2.brightness_p > (this.scene.colorMode != 'default' ? 1e-6 : 0.01)) {
       return {
         newRays: [ray2]

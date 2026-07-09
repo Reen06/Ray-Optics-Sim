@@ -19,6 +19,7 @@ import CircleObjMixin from '../CircleObjMixin.js';
 import i18next from 'i18next';
 import Simulator from '../../Simulator.js';
 import geometry from '../../geometry.js';
+import { applyBlockerScattering, populateScatteringControls } from '../../scatterUtils.js';
 
 /**
  * Circle blocker / filter.
@@ -44,7 +45,8 @@ class CircleBlocker extends CircleObjMixin(BaseFilter) {
     filter: false,
     invert: false,
     wavelength: Simulator.GREEN_WAVELENGTH,
-    bandwidth: 10
+    bandwidth: 10,
+    albedo: 0
   };
 
   static getDescription(objData, scene, detailed = false) {
@@ -60,6 +62,7 @@ class CircleBlocker extends CircleObjMixin(BaseFilter) {
   populateObjBar(objBar) {
     objBar.setTitle(i18next.t('main:tools.CircleBlocker.title'));
     super.populateObjBar(objBar);
+    populateScatteringControls(this, objBar, { includeDiffuse: false, blockerMode: true });
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {
@@ -90,9 +93,10 @@ class CircleBlocker extends CircleObjMixin(BaseFilter) {
   }
 
   onRayIncident(ray, rayIndex, incidentPoint) {
-    return {
-      isAbsorbed: true
-    };
+    // Surface tangent at the incident point (perpendicular to the radius).
+    // With a nonzero albedo the blocker is a matte (Lambertian) wall.
+    const radial = { x: incidentPoint.x - this.p1.x, y: incidentPoint.y - this.p1.y };
+    return applyBlockerScattering(this, ray, incidentPoint, { x: -radial.y, y: radial.x });
   }
 };
 
