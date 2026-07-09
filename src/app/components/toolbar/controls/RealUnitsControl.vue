@@ -52,6 +52,24 @@
       >
     </div>
   </div>
+  <div
+    v-if="unitNameModel"
+    class="row settings-control-row d-flex justify-content-between align-items-center"
+    v-tooltip-popover:[tooltipType]="layout === 'desktop' ? {
+      content: $t('simulator:settings.realUnits.powerUnitDescription'),
+      html: true,
+      placement: 'left',
+      offset: [0, 20]
+    } : undefined"
+  >
+    <div class="col-auto settings-label">{{ $t('simulator:settings.realUnits.powerUnit') }}</div>
+    <div class="col-auto d-flex align-items-center">
+      <select class="units-select" v-model="powerUnitModel">
+        <option value="mW">mW</option>
+        <option value="W">W</option>
+      </select>
+    </div>
+  </div>
 </template>
 
 <script>
@@ -85,6 +103,7 @@ export default {
 
     const unitNameModel = toRef(scene, 'unitName')
     const unitSizeModel = toRef(scene, 'unitSize')
+    const powerUnitModel = toRef(scene, 'powerUnit')
 
     const unitSizeInput = ref(String(unitSizeModel.value ?? 1))
     watch(unitSizeModel, (v) => { unitSizeInput.value = String(v ?? 1) })
@@ -102,6 +121,7 @@ export default {
       tooltipType,
       unitNameModel,
       unitSizeInput,
+      powerUnitModel,
       commitUnitSize
     }
   }

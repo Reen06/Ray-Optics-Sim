@@ -19,6 +19,7 @@ import LineObjMixin from '../LineObjMixin.js';
 import Simulator from '../../Simulator.js';
 import geometry from '../../geometry.js';
 import i18next from 'i18next';
+import { toPhysicalPower, fromPhysicalPower, hasUnits, powerUnit } from '../../unitUtils.js';
 
 /**
  * Finite angle point source
@@ -68,8 +69,9 @@ class AngleSource extends LineObjMixin(BaseSceneObj) {
       var brightnessInfo = '<p>' + i18next.t('simulator:sceneObjs.common.brightnessInfo.rayDensity') + '</p><p>' + i18next.t('simulator:sceneObjs.common.brightnessInfo.rayDensitySlider') + '</p>';
     }
     objBar.setTitle(i18next.t('main:tools.PointSource.title') + ' (<360\u00B0)');
-    objBar.createNumber(i18next.t('simulator:sceneObjs.common.brightness'), 0.01, 1, 0.01, this.brightness, function (obj, value) {
-      obj.brightness = value;
+    const brightnessLabel = i18next.t('simulator:sceneObjs.common.brightness') + (hasUnits(this.scene) ? ` (${powerUnit(this.scene)})` : '');
+    objBar.createNumber(brightnessLabel, toPhysicalPower(this.scene, 0.01), toPhysicalPower(this.scene, 100000), toPhysicalPower(this.scene, 0.01), toPhysicalPower(this.scene, this.brightness), function (obj, value) {
+      obj.brightness = fromPhysicalPower(obj.scene, value);
     }, brightnessInfo);
     if (this.scene.simulateColors) {
       objBar.createNumber(i18next.t('simulator:sceneObjs.common.wavelength') + ' (nm)', Simulator.UV_WAVELENGTH, Simulator.INFRARED_WAVELENGTH, 1, this.wavelength, function (obj, value) {

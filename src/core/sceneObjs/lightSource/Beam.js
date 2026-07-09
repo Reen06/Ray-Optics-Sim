@@ -20,6 +20,7 @@ import Simulator from '../../Simulator.js';
 import geometry from '../../geometry.js';
 import i18next from 'i18next';
 import { exp } from 'mathjs';
+import { toPhysicalPower, fromPhysicalPower, hasUnits, powerUnit } from '../../unitUtils.js';
 
 /**
  * A parallel or divergent beam of light.
@@ -72,8 +73,9 @@ class Beam extends LineObjMixin(BaseSceneObj) {
       var brightnessInfo = '<p>' + i18next.t('simulator:sceneObjs.common.brightnessInfo.rayDensity') + '</p><p>' + i18next.t('simulator:sceneObjs.common.brightnessInfo.rayDensitySlider') + '</p>';
     }
     objBar.setTitle(i18next.t('main:tools.Beam.title'));
-    objBar.createNumber(i18next.t('simulator:sceneObjs.common.brightness'), 0.01 / this.scene.lengthScale, 1 / this.scene.lengthScale, 0.01 / this.scene.lengthScale, this.brightness, function (obj, value) {
-      obj.brightness = value;
+    const brightnessLabel = i18next.t('simulator:sceneObjs.common.brightness') + (hasUnits(this.scene) ? ` (${powerUnit(this.scene)})` : '');
+    objBar.createNumber(brightnessLabel, toPhysicalPower(this.scene, 0.01 / this.scene.lengthScale), toPhysicalPower(this.scene, 100000 / this.scene.lengthScale), toPhysicalPower(this.scene, 0.01 / this.scene.lengthScale), toPhysicalPower(this.scene, this.brightness), function (obj, value) {
+      obj.brightness = fromPhysicalPower(obj.scene, value);
     }, brightnessInfo);
     this.populateDimensionControls(objBar);
     if (this.scene.simulateColors) {

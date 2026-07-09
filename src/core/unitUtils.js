@@ -22,9 +22,16 @@
  * empty (the default), the scene is unitless and all displays keep the legacy
  * raw numbers, so existing scenes are unaffected.
  *
- * Power convention: 1 brightness-unit of detected power ≡ 1 mW (per unit of
- * depth of the 2D scene). This is a display convention only.
+ * Power convention: internally, 1 brightness-unit ALWAYS ≡ 1 mW (per unit of
+ * depth of the 2D scene) -- this never changes, so scenes stay portable
+ * regardless of a user's display preference. `scene.powerUnit` ('mW' or 'W',
+ * default 'mW') only controls how that same underlying value is displayed
+ * and typed on both ends (light source power inputs and detector/power-meter
+ * readouts) -- e.g. so a light source's output can be entered directly in
+ * Watts to match an LED/COB datasheet.
  */
+
+const POWER_UNIT_MW_PER_UNIT = { mW: 1, W: 1000 };
 
 /** Whether the scene has real units configured. */
 export function hasUnits(scene) {
@@ -64,13 +71,34 @@ export function formatLength(scene, canvasUnits, decimals = 2) {
   return hasUnits(scene) ? `${s} ${scene.unitName}` : s;
 }
 
-/** Format a detected power (brightness units ≡ mW) for display. */
+/** The scene's chosen power display unit ('mW' or 'W'; 'mW' if unset/invalid). */
+export function powerUnit(scene) {
+  const u = scene && scene.powerUnit;
+  return (u === 'W') ? 'W' : 'mW';
+}
+
+/** How many internal brightness-units (≡ mW) make up one of the display unit. */
+export function powerUnitScale(scene) {
+  return POWER_UNIT_MW_PER_UNIT[powerUnit(scene)];
+}
+
+/** Convert an internal brightness value (≡ mW) to the scene's display power unit. */
+export function toPhysicalPower(scene, brightnessValue) {
+  return brightnessValue / powerUnitScale(scene);
+}
+
+/** Convert a value typed in the scene's display power unit back to internal brightness (≡ mW). */
+export function fromPhysicalPower(scene, displayValue) {
+  return displayValue * powerUnitScale(scene);
+}
+
+/** Format a detected power (brightness units ≡ mW) for display, in the scene's chosen power unit. */
 export function formatPower(scene, power, decimals = 2) {
-  const s = power.toFixed(decimals);
-  return hasUnits(scene) ? `${s} mW` : s;
+  if (!hasUnits(scene)) return power.toFixed(decimals);
+  return `${toPhysicalPower(scene, power).toFixed(decimals)} ${powerUnit(scene)}`;
 }
 
 /** The unit label for irradiance along a line detector (power per length). */
 export function irradianceUnit(scene) {
-  return hasUnits(scene) ? `mW/${scene.unitName}` : '';
+  return hasUnits(scene) ? `${powerUnit(scene)}/${scene.unitName}` : '';
 }

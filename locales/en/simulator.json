@@ -83,7 +83,9 @@
     "realUnits": {
       "title": "Real Units",
       "unitSize": "1 unit ({{unit}})",
-      "description": "Give the scene real-world units: one canvas unit equals the chosen physical length. Rulers, dimensions, and detector readings then display in real units (power readings use the convention 1 brightness-unit = 1 mW per unit depth). Leave as None for the classic unitless behavior."
+      "description": "Give the scene real-world units: one canvas unit equals the chosen physical length. Rulers, dimensions, and detector readings then display in real units (power readings use the convention 1 brightness-unit = 1 mW per unit depth). Leave as None for the classic unitless behavior.",
+      "powerUnit": "Power Unit",
+      "powerUnitDescription": "Choose whether light source power and detector/power meter readings display in milliwatts or watts, e.g. to match a COB LED's datasheet rating directly."
     },
     "zoom": {
       "title": "Zoom"

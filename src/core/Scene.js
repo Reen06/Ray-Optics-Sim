@@ -212,6 +212,7 @@ class Scene {
     lengthScale: 1,
     unitName: '',
     unitSize: 1,
+    powerUnit: 'mW',
     origin: { x: 0, y: 0 },
     scale: 1,
     width: 1500,
