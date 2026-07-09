@@ -24,6 +24,7 @@
  *   { cmd: 'run', runId, sceneJSON, viewport: { originX, originY, scale, width, height, dpr },
  *     rayCountLimit, maxMs }
  *   { cmd: 'stop', runId }
+ *   { cmd: 'extend', runId, rayCountLimit, extraMs }  (raise the budget/deadline of the current run instead of letting it stop)
  *
  * Protocol (worker -> main):
  *   { type: 'progress', runId, processedRayCount, rayCountLimit, elapsed,
@@ -62,6 +63,9 @@ const FRAME_INTERVAL_MS = 200;
 let currentRunId = null;
 let currentSimulator = null;
 let cancelled = false;
+/** Mutable so a `cmd: 'extend'` message can raise them mid-run (see `self.onmessage` below). */
+let currentRayCountLimit = 0;
+let currentMaxMs = 0;
 let lastFrameTime = 0;
 let frameInFlight = false;
 
@@ -140,7 +144,9 @@ function postFinalFrame(runId, sourceCanvas) {
 }
 
 function run(msg) {
-  const { runId, sceneJSON, viewport, rayCountLimit, maxMs } = msg;
+  const { runId, sceneJSON, viewport } = msg;
+  currentRayCountLimit = msg.rayCountLimit;
+  currentMaxMs = msg.maxMs;
 
   // Invalidate any previous run; its pending timer callbacks will see the stale
   // generation and stop at their next 50ms slice boundary.
@@ -211,7 +217,7 @@ function run(msg) {
     null,
     virtualCanvas.getContext('2d'),
     true,
-    rayCountLimit,
+    currentRayCountLimit,
     gl,
     null,
     (width, height) => new OffscreenCanvas(width, height)
@@ -224,7 +230,7 @@ function run(msg) {
       type: 'progress',
       runId,
       processedRayCount: simulator.processedRayCount,
-      rayCountLimit,
+      rayCountLimit: currentRayCountLimit,
       elapsed: simulator.simulationStartTime ? (new Date() - simulator.simulationStartTime) : 0,
       totalTruncation: simulator.totalTruncation,
       brightnessScale: simulator.brightnessScale,
@@ -266,7 +272,7 @@ function run(msg) {
     // Wall-clock cap: some scenes (e.g. rays trapped between perfect facing
     // mirrors with unlimited ray depth) never terminate and process rays very
     // slowly; the budget alone doesn't bound their runtime.
-    if (maxMs && simulator.simulationStartTime && (new Date() - simulator.simulationStartTime) > maxMs) {
+    if (currentMaxMs && simulator.simulationStartTime && (new Date() - simulator.simulationStartTime) > currentMaxMs) {
       timedOut = true;
       simulator.stopSimulation();
     }
@@ -299,6 +305,25 @@ self.onmessage = (event) => {
     if (msg.runId === currentRunId && currentSimulator) {
       cancelled = true;
       currentSimulator.stopSimulation();
+    }
+  } else if (msg.cmd === 'extend') {
+    // The main thread offered a "taking longer than normal, keep going?"
+    // prompt and the user chose to continue: raise the ray budget and push
+    // the wall-clock deadline `extraMs` out from now (not from the original
+    // start, so it reliably grants fresh runway regardless of how much time
+    // has already elapsed). The run is still live at this point (it only
+    // reaches `rayCountLimit`/`maxMs` at its next check), so this just
+    // raises the ceiling out from under it rather than needing to resume a
+    // stopped simulation.
+    if (msg.runId === currentRunId && currentSimulator) {
+      if (msg.rayCountLimit > currentRayCountLimit) {
+        currentRayCountLimit = msg.rayCountLimit;
+        currentSimulator.rayCountLimit = currentRayCountLimit;
+      }
+      if (msg.extraMs) {
+        const elapsed = currentSimulator.simulationStartTime ? (new Date() - currentSimulator.simulationStartTime) : 0;
+        currentMaxMs = elapsed + msg.extraMs;
+      }
     }
   }
 };

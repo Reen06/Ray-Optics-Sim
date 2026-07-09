@@ -865,7 +865,10 @@
     "recompute": "Recompute",
     "detail": "Detail",
     "snapshot": "Snapshot",
-    "description": "The scene always shows a fast live preview while you edit. Press Compute to run a full high-detail simulation in the background: the result renders progressively and detector readings become high-precision. The Detail slider multiplies both the ray budget and ray density of the snapshot only (it does not affect the live preview). Snapshots use a fixed random seed by default, so readings are reproducible and comparable between design iterations."
+    "description": "The scene always shows a fast live preview while you edit. Press Compute to run a full high-detail simulation in the background: the result renders progressively and detector readings become high-precision. The Detail slider multiplies both the ray budget and ray density of the snapshot only (it does not affect the live preview). Snapshots use a fixed random seed by default, so readings are reproducible and comparable between design iterations.",
+    "takingLong": "Taking longer than normal. Keep going?",
+    "keepGoing": "Keep going",
+    "reachedLimitWarning": "Stopped at the ray/time budget before every possible ray path finished tracing — some rays (e.g. reaching a sensor after many bounces) may be missing. Increase Detail, or choose \"Keep going\" if prompted during a slow run, for a more complete result."
   },
   "footer": {
     "processing": "Processing… Click here to stop.",

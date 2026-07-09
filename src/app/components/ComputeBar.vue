@@ -18,6 +18,13 @@
   <div class="compute-error-banner" v-if="state === 'live' && lastError" @click="dismissError">
     ⚠ {{ lastError }} <span class="compute-error-dismiss">✕</span>
   </div>
+  <div class="compute-slow-banner" v-if="state === 'computing' && takingLong">
+    <span>{{ $t('simulator:computeBar.takingLong') }}</span>
+    <div class="compute-slow-actions">
+      <button class="btn compute-slow-btn" @click="handleKeepGoing">{{ $t('simulator:computeBar.keepGoing') }}</button>
+      <span class="compute-slow-dismiss" @click="handleDismissSlow">✕</span>
+    </div>
+  </div>
   <div class="compute-bar" v-if="supported">
     <!-- Live state: detail slider + Compute button -->
     <template v-if="state === 'live'">
@@ -51,6 +58,7 @@
     <template v-else>
       <span class="snapshot-label" :title="snapshotTitle">
         {{ $t('simulator:computeBar.snapshot') }} ×{{ lastMultiplierLabel }} · {{ rayCountLabel }} · {{ elapsedLabel }}
+        <span v-if="reachedLimit" class="snapshot-truncated" :title="$t('simulator:computeBar.reachedLimitWarning')">⚠</span>
       </span>
       <button class="btn compute-btn" @click="handleCompute" v-tooltip-popover="{ title: $t('simulator:computeBar.recompute') }">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
@@ -79,7 +87,7 @@
 import { computed, toRef } from 'vue'
 import { vTooltipPopover } from '../directives/tooltip-popover'
 import { usePreferencesStore } from '../store/preferences'
-import { computeState, startCompute, cancelCompute, exitToLive } from '../services/compute'
+import { computeState, startCompute, cancelCompute, exitToLive, keepComputing, dismissSlowPrompt } from '../services/compute'
 
 export default {
   name: 'ComputeBar',
@@ -93,6 +101,8 @@ export default {
     const state = computed(() => computeState.state)
     const supported = computed(() => computeState.supported)
     const progress = computed(() => computeState.progress)
+    const takingLong = computed(() => computeState.takingLong)
+    const reachedLimit = computed(() => computeState.reachedLimit)
 
     const detailMultiplierLabel = computed(() => Math.round(Math.pow(10, snapshotDetail.value)))
     const lastMultiplierLabel = computed(() => Math.round(computeState.detailMultiplier))
@@ -135,10 +145,21 @@ export default {
       exitToLive()
     }
 
+    const handleKeepGoing = (event) => {
+      event.target.blur()
+      keepComputing()
+    }
+
+    const handleDismissSlow = () => {
+      dismissSlowPrompt()
+    }
+
     return {
       state,
       supported,
       progress,
+      takingLong,
+      reachedLimit,
       snapshotDetail,
       detailMultiplierLabel,
       lastMultiplierLabel,
@@ -149,7 +170,9 @@ export default {
       dismissError,
       handleCompute,
       handleCancel,
-      handleLive
+      handleLive,
+      handleKeepGoing,
+      handleDismissSlow
     }
   }
 }
@@ -283,5 +306,52 @@ export default {
   float: right;
   opacity: 0.8;
   margin-left: 8px;
+}
+
+.compute-slow-banner {
+  position: fixed;
+  bottom: 70px;
+  right: 75px;
+  z-index: 100;
+  max-width: 260px;
+  background-color: rgba(60, 60, 60, 0.92);
+  color: white;
+  padding: 8px 10px;
+  border-radius: 0.5em;
+  font-size: 9.5pt;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compute-slow-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.compute-slow-btn {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: none;
+  border-radius: 0.4em;
+  padding: 3px 10px;
+  font-size: 9pt;
+}
+
+.compute-slow-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.compute-slow-dismiss {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.snapshot-truncated {
+  opacity: 0.9;
+  cursor: default;
 }
 </style>

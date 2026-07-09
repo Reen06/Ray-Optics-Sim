@@ -57,6 +57,18 @@ const SNAPSHOT_MAX_MS = 30000;
  */
 const SNAPSHOT_DEFAULT_SEED = 'snapshot';
 
+/**
+ * If a run is still going after this long, surface a "taking longer than
+ * normal, keep going?" prompt (ComputeBar.vue) instead of just running to
+ * SNAPSHOT_MAX_MS/the ray budget and silently truncating -- deliberately
+ * well short of SNAPSHOT_MAX_MS so there's time left to actually extend it.
+ */
+const SLOW_PROMPT_MS = 8000;
+
+/** Ray budget/wall-clock time granted per "Keep going" click. */
+const EXTEND_RAY_BUDGET_MULTIPLIER = 2;
+const EXTEND_MS = 20000;
+
 export const computeState = reactive({
   /** 'live' | 'computing' | 'snapshot' */
   state: 'live',
@@ -68,6 +80,8 @@ export const computeState = reactive({
   /** Detail multiplier of the last/current snapshot run. */
   detailMultiplier: 1,
   reachedLimit: false,
+  /** True while the "taking longer than normal, keep going?" prompt should show. */
+  takingLong: false,
   error: null,
   warning: null,
 });
@@ -78,6 +92,10 @@ let prevManualLightRedraw = false;
 let initialized = false;
 /** Whether the current run has ever produced a bitmap ('frame' message). */
 let receivedAnyFrame = false;
+/** Once the user dismisses the slow-run prompt, don't immediately re-show it
+ * for the rest of this run (it would otherwise reappear on the very next
+ * progress tick, since elapsed time only grows). Reset per run. */
+let slowPromptDismissed = false;
 /** Watchdog: if the worker never responds at all (no progress/frame/done),
  * fail loudly instead of leaving the UI stuck on a frozen canvas forever. */
 let watchdogTimer = null;
@@ -261,8 +279,12 @@ function onWorkerMessage(event) {
     applyDetectorData(msg);
     emitStatus(msg, true);
     armWatchdog();
+    if (!computeState.takingLong && !slowPromptDismissed && computeState.progress < 1 && msg.elapsed > SLOW_PROMPT_MS) {
+      computeState.takingLong = true;
+    }
   } else if (msg.type === 'done') {
     if (computeState.state !== 'computing') return;
+    computeState.takingLong = false;
     if (msg.cancelled) {
       exitToLive();
       return;
@@ -350,6 +372,7 @@ export function startCompute(detail) {
 
   runId++;
   receivedAnyFrame = false;
+  slowPromptDismissed = false;
   computeState.state = 'computing';
   computeState.progress = 0;
   computeState.processedRayCount = 0;
@@ -357,6 +380,7 @@ export function startCompute(detail) {
   computeState.elapsed = 0;
   computeState.detailMultiplier = multiplier;
   computeState.reachedLimit = false;
+  computeState.takingLong = false;
   computeState.error = null;
   computeState.warning = null;
   armWatchdog();
@@ -388,6 +412,27 @@ export function cancelCompute() {
   getWorker().postMessage({ cmd: 'stop', runId });
   // Don't wait for the worker's ack to unfreeze the UI.
   exitToLive();
+}
+
+/**
+ * Respond to the "taking longer than normal, keep going?" prompt by raising
+ * the run's ray budget and wall-clock deadline instead of letting it stop.
+ * The run is still live at this point -- this just raises the ceiling it's
+ * heading toward, no resume-from-stopped logic needed.
+ */
+export function keepComputing() {
+  if (computeState.state !== 'computing') return;
+  computeState.takingLong = false;
+  const newLimit = Math.min(SNAPSHOT_MAX_RAY_BUDGET, Math.round(computeState.rayCountLimit * EXTEND_RAY_BUDGET_MULTIPLIER));
+  computeState.rayCountLimit = newLimit;
+  getWorker().postMessage({ cmd: 'extend', runId, rayCountLimit: newLimit, extraMs: EXTEND_MS });
+  armWatchdog();
+}
+
+/** Dismiss the "taking longer than normal" prompt without extending; the run keeps going toward its original budget/deadline and won't re-prompt this run. */
+export function dismissSlowPrompt() {
+  computeState.takingLong = false;
+  slowPromptDismissed = true;
 }
 
 /** Leave snapshot/computing mode and resume the live preview. */
